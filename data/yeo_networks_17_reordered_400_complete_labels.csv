@@ -1,0 +1,401 @@
+17networks_order,7networks_order,17networks_labels,7networks_labels,17networks,7networks,region_labels
+61,1,17Networks_LH_DorsAttnA_TempOcc_2,7Networks_LH_Vis_1,Dorsal Attention (A),Visual,TempOcc
+193,2,17Networks_LH_DefaultC_PHC_2,7Networks_LH_Vis_2,Default (C),Visual,PHC
+1,3,17Networks_LH_VisCent_ExStr_1,7Networks_LH_Vis_3,Visual (A),Visual,ExStr
+13,4,17Networks_LH_VisPeri_ExStrInf_1,7Networks_LH_Vis_4,Visual (B),Visual,ExStrInf
+2,5,17Networks_LH_VisCent_ExStr_2,7Networks_LH_Vis_5,Visual (A),Visual,ExStr
+3,6,17Networks_LH_VisCent_ExStr_3,7Networks_LH_Vis_6,Visual (A),Visual,ExStr
+194,7,17Networks_LH_DefaultC_PHC_3,7Networks_LH_Vis_7,Default (C),Visual,PHC
+63,8,17Networks_LH_DorsAttnA_TempOcc_4,7Networks_LH_Vis_8,Dorsal Attention (A),Visual,TempOcc_4
+4,9,17Networks_LH_VisCent_ExStr_4,7Networks_LH_Vis_9,Visual (A),Visual,ExStr_4
+14,10,17Networks_LH_VisPeri_ExStrInf_2,7Networks_LH_Vis_10,Visual (B),Visual,ExStrInf
+15,11,17Networks_LH_VisPeri_ExStrInf_3,7Networks_LH_Vis_11,Visual (B),Visual,ExStrInf
+5,12,17Networks_LH_VisCent_ExStr_5,7Networks_LH_Vis_12,Visual (A),Visual,ExStr_5
+16,13,17Networks_LH_VisPeri_ExStrInf_4,7Networks_LH_Vis_13,Visual (B),Visual,ExStrInf_4
+6,14,17Networks_LH_VisCent_ExStr_6,7Networks_LH_Vis_14,Visual (A),Visual,ExStr_6
+7,15,17Networks_LH_VisCent_Striate_1,7Networks_LH_Vis_15,Visual (A),Visual,Striate
+17,16,17Networks_LH_VisPeri_ExStrInf_5,7Networks_LH_Vis_16,Visual (B),Visual,ExStrInf_5
+8,17,17Networks_LH_VisCent_ExStr_7,7Networks_LH_Vis_17,Visual (A),Visual,ExStr_7
+18,18,17Networks_LH_VisPeri_StriCal_1,7Networks_LH_Vis_18,Visual (B),Visual,StriCal
+9,19,17Networks_LH_VisCent_ExStr_8,7Networks_LH_Vis_19,Visual (A),Visual,ExStr_8
+189,20,17Networks_LH_DefaultC_Rsp_1,7Networks_LH_Vis_20,Default (C),Visual,Rsp
+19,21,17Networks_LH_VisPeri_StriCal_2,7Networks_LH_Vis_21,Visual (B),Visual,StriCal
+20,22,17Networks_LH_VisPeri_ExStrSup_1,7Networks_LH_Vis_22,Visual (B),Visual,ExStrSup
+10,23,17Networks_LH_VisCent_ExStr_9,7Networks_LH_Vis_23,Visual (A),Visual,ExStr_9
+11,24,17Networks_LH_VisCent_ExStr_10,7Networks_LH_Vis_24,Visual (A),Visual,ExStr0
+21,25,17Networks_LH_VisPeri_ExStrSup_2,7Networks_LH_Vis_25,Visual (B),Visual,ExStrSup
+22,26,17Networks_LH_VisPeri_ExStrSup_3,7Networks_LH_Vis_26,Visual (B),Visual,ExStrSup
+12,27,17Networks_LH_VisCent_ExStr_11,7Networks_LH_Vis_27,Visual (A),Visual,ExStr1
+65,28,17Networks_LH_DorsAttnA_ParOcc_2,7Networks_LH_Vis_28,Dorsal Attention (A),Visual,ParOcc
+23,29,17Networks_LH_VisPeri_ExStrSup_4,7Networks_LH_Vis_29,Visual (B),Visual,ExStrSup_4
+24,30,17Networks_LH_VisPeri_ExStrSup_5,7Networks_LH_Vis_30,Visual (B),Visual,ExStrSup_5
+67,31,17Networks_LH_DorsAttnA_SPL_2,7Networks_LH_Vis_31,Dorsal Attention (A),Visual,SPL
+44,32,17Networks_LH_SomMotB_Aud_1,7Networks_LH_SomMot_1,Somatomotor (B),Somatomotor,SomMotB_Aud
+45,33,17Networks_LH_SomMotB_Aud_2,7Networks_LH_SomMot_2,Somatomotor (B),Somatomotor,SomMotB_Aud
+46,34,17Networks_LH_SomMotB_Ins_1,7Networks_LH_SomMot_3,Somatomotor (B),Somatomotor,SomMotB_Ins
+47,35,17Networks_LH_SomMotB_S2_1,7Networks_LH_SomMot_4,Somatomotor (B),Somatomotor,SomMotB_S2
+48,36,17Networks_LH_SomMotB_S2_2,7Networks_LH_SomMot_5,Somatomotor (B),Somatomotor,SomMotB_S2
+49,37,17Networks_LH_SomMotB_Aud_3,7Networks_LH_SomMot_6,Somatomotor (B),Somatomotor,SomMotB_Aud
+50,38,17Networks_LH_SomMotB_Aud_4,7Networks_LH_SomMot_7,Somatomotor (B),Somatomotor,SomMotB_Aud_4
+51,39,17Networks_LH_SomMotB_S2_3,7Networks_LH_SomMot_8,Somatomotor (B),Somatomotor,SomMotB_S2
+52,40,17Networks_LH_SomMotB_S2_4,7Networks_LH_SomMot_9,Somatomotor (B),Somatomotor,SomMotB_S2_4
+53,41,17Networks_LH_SomMotB_S2_5,7Networks_LH_SomMot_10,Somatomotor (B),Somatomotor,SomMotB_S2_5
+54,42,17Networks_LH_SomMotB_S2_6,7Networks_LH_SomMot_11,Somatomotor (B),Somatomotor,SomMotB_S2_6
+55,43,17Networks_LH_SomMotB_Cent_1,7Networks_LH_SomMot_12,Somatomotor (B),Somatomotor,SomMotB_Cent
+56,44,17Networks_LH_SomMotB_Cent_2,7Networks_LH_SomMot_13,Somatomotor (B),Somatomotor,SomMotB_Cent
+57,45,17Networks_LH_SomMotB_Cent_3,7Networks_LH_SomMot_14,Somatomotor (B),Somatomotor,SomMotB_Cent
+74,46,17Networks_LH_DorsAttnB_PostC_2,7Networks_LH_SomMot_15,Dorsal Attention (B),Somatomotor,PostC
+58,47,17Networks_LH_SomMotB_Cent_4,7Networks_LH_SomMot_16,Somatomotor (B),Somatomotor,SomMotB_Cent_4
+59,48,17Networks_LH_SomMotB_Cent_5,7Networks_LH_SomMot_17,Somatomotor (B),Somatomotor,SomMotB_Cent_5
+25,49,17Networks_LH_SomMotA_1,7Networks_LH_SomMot_18,Somatomotor (A),Somatomotor,SomMotA
+26,50,17Networks_LH_SomMotA_2,7Networks_LH_SomMot_19,Somatomotor (A),Somatomotor,SomMotA
+27,51,17Networks_LH_SomMotA_3,7Networks_LH_SomMot_20,Somatomotor (A),Somatomotor,SomMotA
+28,52,17Networks_LH_SomMotA_4,7Networks_LH_SomMot_21,Somatomotor (A),Somatomotor,SomMotA_4
+29,53,17Networks_LH_SomMotA_5,7Networks_LH_SomMot_22,Somatomotor (A),Somatomotor,SomMotA_5
+30,54,17Networks_LH_SomMotA_6,7Networks_LH_SomMot_23,Somatomotor (A),Somatomotor,SomMotA_6
+31,55,17Networks_LH_SomMotA_7,7Networks_LH_SomMot_24,Somatomotor (A),Somatomotor,SomMotA_7
+32,56,17Networks_LH_SomMotA_8,7Networks_LH_SomMot_25,Somatomotor (A),Somatomotor,SomMotA_8
+33,57,17Networks_LH_SomMotA_9,7Networks_LH_SomMot_26,Somatomotor (A),Somatomotor,SomMotA_9
+78,58,17Networks_LH_DorsAttnB_PostC_6,7Networks_LH_SomMot_27,Dorsal Attention (B),Somatomotor,PostC_6
+34,59,17Networks_LH_SomMotA_10,7Networks_LH_SomMot_28,Somatomotor (A),Somatomotor,SomMotA0
+35,60,17Networks_LH_SomMotA_11,7Networks_LH_SomMot_29,Somatomotor (A),Somatomotor,SomMotA1
+36,61,17Networks_LH_SomMotA_12,7Networks_LH_SomMot_30,Somatomotor (A),Somatomotor,SomMotA2
+37,62,17Networks_LH_SomMotA_13,7Networks_LH_SomMot_31,Somatomotor (A),Somatomotor,SomMotA3
+38,63,17Networks_LH_SomMotA_14,7Networks_LH_SomMot_32,Somatomotor (A),Somatomotor,SomMotA4
+39,64,17Networks_LH_SomMotA_15,7Networks_LH_SomMot_33,Somatomotor (A),Somatomotor,SomMotA5
+40,65,17Networks_LH_SomMotA_16,7Networks_LH_SomMot_34,Somatomotor (A),Somatomotor,SomMotA6
+41,66,17Networks_LH_SomMotA_17,7Networks_LH_SomMot_35,Somatomotor (A),Somatomotor,SomMotA7
+42,67,17Networks_LH_SomMotA_18,7Networks_LH_SomMot_36,Somatomotor (A),Somatomotor,SomMotA8
+43,68,17Networks_LH_SomMotA_19,7Networks_LH_SomMot_37,Somatomotor (A),Somatomotor,SomMotA9
+60,69,17Networks_LH_DorsAttnA_TempOcc_1,7Networks_LH_DorsAttn_Post_1,Dorsal Attention (A),Dorsal Attn,TempOcc
+62,70,17Networks_LH_DorsAttnA_TempOcc_3,7Networks_LH_DorsAttn_Post_2,Dorsal Attention (A),Dorsal Attn,TempOcc
+121,71,17Networks_LH_ContA_Temp_1,7Networks_LH_DorsAttn_Post_3,Control (A),Dorsal Attn,Temp
+64,72,17Networks_LH_DorsAttnA_ParOcc_1,7Networks_LH_DorsAttn_Post_4,Dorsal Attention (A),Dorsal Attn,ParOcc
+66,73,17Networks_LH_DorsAttnA_SPL_1,7Networks_LH_DorsAttn_Post_5,Dorsal Attention (A),Dorsal Attn,SPL
+75,74,17Networks_LH_DorsAttnB_PostC_3,7Networks_LH_DorsAttn_Post_6,Dorsal Attention (B),Dorsal Attn,PostC
+68,75,17Networks_LH_DorsAttnA_SPL_3,7Networks_LH_DorsAttn_Post_7,Dorsal Attention (A),Dorsal Attn,SPL
+76,76,17Networks_LH_DorsAttnB_PostC_4,7Networks_LH_DorsAttn_Post_8,Dorsal Attention (B),Dorsal Attn,PostC_4
+126,77,17Networks_LH_ContA_IPS_5,7Networks_LH_DorsAttn_Post_9,Control (A),Dorsal Attn,IPS_5
+69,78,17Networks_LH_DorsAttnA_SPL_4,7Networks_LH_DorsAttn_Post_10,Dorsal Attention (A),Dorsal Attn,SPL_4
+77,79,17Networks_LH_DorsAttnB_PostC_5,7Networks_LH_DorsAttn_Post_11,Dorsal Attention (B),Dorsal Attn,PostC_5
+70,80,17Networks_LH_DorsAttnA_SPL_5,7Networks_LH_DorsAttn_Post_12,Dorsal Attention (A),Dorsal Attn,SPL_5
+71,81,17Networks_LH_DorsAttnA_SPL_6,7Networks_LH_DorsAttn_Post_13,Dorsal Attention (A),Dorsal Attn,SPL_6
+72,82,17Networks_LH_DorsAttnA_SPL_7,7Networks_LH_DorsAttn_Post_14,Dorsal Attention (A),Dorsal Attn,SPL_7
+79,83,17Networks_LH_DorsAttnB_PostC_7,7Networks_LH_DorsAttn_Post_15,Dorsal Attention (B),Dorsal Attn,PostC_7
+80,84,17Networks_LH_DorsAttnB_PostC_8,7Networks_LH_DorsAttn_Post_16,Dorsal Attention (B),Dorsal Attn,PostC_8
+81,85,17Networks_LH_DorsAttnB_PostC_9,7Networks_LH_DorsAttn_Post_17,Dorsal Attention (B),Dorsal Attn,PostC_9
+82,86,17Networks_LH_DorsAttnB_FEF_1,7Networks_LH_DorsAttn_FEF_1,Dorsal Attention (B),Dorsal Attn,FEF
+83,87,17Networks_LH_DorsAttnB_FEF_2,7Networks_LH_DorsAttn_FEF_2,Dorsal Attention (B),Dorsal Attn,FEF
+84,88,17Networks_LH_DorsAttnB_FEF_3,7Networks_LH_DorsAttn_FEF_3,Dorsal Attention (B),Dorsal Attn,FEF
+127,89,17Networks_LH_ContA_PFCd_1,7Networks_LH_DorsAttn_FEF_4,Control (A),Dorsal Attn,PFCd
+130,90,17Networks_LH_ContA_PFCl_1,7Networks_LH_DorsAttn_PrCv_1,Control (A),Dorsal Attn,PFCl
+85,91,17Networks_LH_DorsAttnB_PrCv_1,7Networks_LH_DorsAttn_PrCv_2,Dorsal Attention (B),Dorsal Attn,PrCv
+86,92,17Networks_LH_SalVentAttnA_ParOper_1,7Networks_LH_SalVentAttn_ParOper_1,Salience / Ven Att (A),Salience / Ventral Attn,ParOper
+87,93,17Networks_LH_SalVentAttnA_ParOper_2,7Networks_LH_SalVentAttn_ParOper_2,Salience / Ven Att (A),Salience / Ventral Attn,ParOper
+73,94,17Networks_LH_DorsAttnB_PostC_1,7Networks_LH_SalVentAttn_ParOper_3,Dorsal Attention (B),Salience / Ventral Attn,PostC
+88,95,17Networks_LH_SalVentAttnA_ParOper_3,7Networks_LH_SalVentAttn_ParOper_4,Salience / Ven Att (A),Salience / Ventral Attn,ParOper
+199,96,17Networks_LH_TempPar_5,7Networks_LH_SalVentAttn_TempOcc_1,Temporal Parietal,Salience / Ventral Attn,TempPar_5
+120,97,17Networks_LH_LimbicA_TempPole_7,7Networks_LH_SalVentAttn_FrOperIns_1,Limbic (A),Salience / Ventral Attn,TempPole_7
+89,98,17Networks_LH_SalVentAttnA_Ins_1,7Networks_LH_SalVentAttn_FrOperIns_2,Salience / Ven Att (A),Salience / Ventral Attn,Ins
+105,99,17Networks_LH_SalVentAttnB_Ins_2,7Networks_LH_SalVentAttn_FrOperIns_3,Salience / Ven Att (B),Salience / Ventral Attn,Ins
+90,100,17Networks_LH_SalVentAttnA_Ins_2,7Networks_LH_SalVentAttn_FrOperIns_4,Salience / Ven Att (A),Salience / Ventral Attn,Ins
+91,101,17Networks_LH_SalVentAttnA_Ins_3,7Networks_LH_SalVentAttn_FrOperIns_5,Salience / Ven Att (A),Salience / Ventral Attn,Ins
+92,102,17Networks_LH_SalVentAttnA_Ins_4,7Networks_LH_SalVentAttn_FrOperIns_6,Salience / Ven Att (A),Salience / Ventral Attn,Ins_4
+106,103,17Networks_LH_SalVentAttnB_Ins_3,7Networks_LH_SalVentAttn_FrOperIns_7,Salience / Ven Att (B),Salience / Ventral Attn,Ins
+93,104,17Networks_LH_SalVentAttnA_FrOper_1,7Networks_LH_SalVentAttn_FrOperIns_8,Salience / Ven Att (A),Salience / Ventral Attn,FrOper
+94,105,17Networks_LH_SalVentAttnA_FrOper_2,7Networks_LH_SalVentAttn_FrOperIns_9,Salience / Ven Att (A),Salience / Ventral Attn,FrOper
+102,106,17Networks_LH_SalVentAttnB_PFCl_2,7Networks_LH_SalVentAttn_PFCl_1,Salience / Ven Att (B),Salience / Ventral Attn,PFCl
+108,107,17Networks_LH_SalVentAttnB_PFCmp_1,7Networks_LH_SalVentAttn_Med_1,Salience / Ven Att (B),Salience / Ventral Attn,PFCmp
+98,108,17Networks_LH_SalVentAttnA_FrMed_1,7Networks_LH_SalVentAttn_Med_2,Salience / Ven Att (A),Salience / Ventral Attn,FrMed
+95,109,17Networks_LH_SalVentAttnA_ParMed_1,7Networks_LH_SalVentAttn_Med_3,Salience / Ven Att (A),Salience / Ventral Attn,ParMed
+99,110,17Networks_LH_SalVentAttnA_FrMed_2,7Networks_LH_SalVentAttn_Med_4,Salience / Ven Att (A),Salience / Ventral Attn,FrMed
+96,111,17Networks_LH_SalVentAttnA_ParMed_2,7Networks_LH_SalVentAttn_Med_5,Salience / Ven Att (A),Salience / Ventral Attn,ParMed
+97,112,17Networks_LH_SalVentAttnA_ParMed_3,7Networks_LH_SalVentAttn_Med_6,Salience / Ven Att (A),Salience / Ventral Attn,ParMed
+100,113,17Networks_LH_SalVentAttnA_FrMed_3,7Networks_LH_SalVentAttn_Med_7,Salience / Ven Att (A),Salience / Ventral Attn,FrMed
+109,114,17Networks_LH_LimbicB_OFC_1,7Networks_LH_Limbic_OFC_1,Limbic (B),Limbic,OFC
+110,115,17Networks_LH_LimbicB_OFC_2,7Networks_LH_Limbic_OFC_2,Limbic (B),Limbic,OFC
+111,116,17Networks_LH_LimbicB_OFC_3,7Networks_LH_Limbic_OFC_3,Limbic (B),Limbic,OFC
+112,117,17Networks_LH_LimbicB_OFC_4,7Networks_LH_Limbic_OFC_4,Limbic (B),Limbic,OFC_4
+113,118,17Networks_LH_LimbicB_OFC_5,7Networks_LH_Limbic_OFC_5,Limbic (B),Limbic,OFC_5
+114,119,17Networks_LH_LimbicA_TempPole_1,7Networks_LH_Limbic_TempPole_1,Limbic (A),Limbic,TempPole
+115,120,17Networks_LH_LimbicA_TempPole_2,7Networks_LH_Limbic_TempPole_2,Limbic (A),Limbic,TempPole
+116,121,17Networks_LH_LimbicA_TempPole_3,7Networks_LH_Limbic_TempPole_3,Limbic (A),Limbic,TempPole
+117,122,17Networks_LH_LimbicA_TempPole_4,7Networks_LH_Limbic_TempPole_4,Limbic (A),Limbic,TempPole_4
+118,123,17Networks_LH_LimbicA_TempPole_5,7Networks_LH_Limbic_TempPole_5,Limbic (A),Limbic,TempPole_5
+167,124,17Networks_LH_DefaultB_Temp_1,7Networks_LH_Limbic_TempPole_6,Default (B),Limbic,Temp
+119,125,17Networks_LH_LimbicA_TempPole_6,7Networks_LH_Limbic_TempPole_7,Limbic (A),Limbic,TempPole_6
+192,126,17Networks_LH_DefaultC_PHC_1,7Networks_LH_Limbic_TempPole_8,Default (C),Limbic,PHC
+122,127,17Networks_LH_ContA_IPS_1,7Networks_LH_Cont_Par_1,Control (A),Control,IPS
+123,128,17Networks_LH_ContA_IPS_2,7Networks_LH_Cont_Par_2,Control (A),Control,IPS
+137,129,17Networks_LH_ContB_IPL_2,7Networks_LH_Cont_Par_3,Control (B),Control,IPL
+124,130,17Networks_LH_ContA_IPS_3,7Networks_LH_Cont_Par_4,Control (A),Control,IPS
+138,131,17Networks_LH_ContB_IPL_3,7Networks_LH_Cont_Par_5,Control (B),Control,IPL
+125,132,17Networks_LH_ContA_IPS_4,7Networks_LH_Cont_Par_6,Control (A),Control,IPS_4
+135,133,17Networks_LH_ContB_Temp_2,7Networks_LH_Cont_Temp_1,Control (B),Control,Temp
+107,134,17Networks_LH_SalVentAttnB_OFC_1,7Networks_LH_Cont_OFC_1,Salience / Ven Att (B),Control,OFC
+140,135,17Networks_LH_ContB_PFClv_1,7Networks_LH_Cont_PFCl_1,Control (B),Control,PFClv
+128,136,17Networks_LH_ContA_PFClv_1,7Networks_LH_Cont_PFCl_2,Control (A),Control,PFClv
+101,137,17Networks_LH_SalVentAttnB_PFCl_1,7Networks_LH_Cont_PFCl_3,Salience / Ven Att (B),Control,PFCl
+142,138,17Networks_LH_ContB_PFClv_3,7Networks_LH_Cont_PFCl_4,Control (B),Control,PFClv
+129,139,17Networks_LH_ContA_PFClv_2,7Networks_LH_Cont_PFCl_5,Control (A),Control,PFClv
+131,140,17Networks_LH_ContA_PFCl_2,7Networks_LH_Cont_PFCl_6,Control (A),Control,PFCl
+132,141,17Networks_LH_ContA_PFCl_3,7Networks_LH_Cont_PFCl_7,Control (A),Control,PFCl
+103,142,17Networks_LH_SalVentAttnB_PFCl_3,7Networks_LH_Cont_PFCl_8,Salience / Ven Att (B),Control,PFCl
+104,143,17Networks_LH_SalVentAttnB_Ins_1,7Networks_LH_Cont_PFCv_1,Salience / Ven Att (B),Control,Ins
+145,144,17Networks_LH_ContC_pCun_2,7Networks_LH_Cont_pCun_1,Control (C),Control,pCun
+146,145,17Networks_LH_ContC_pCun_3,7Networks_LH_Cont_pCun_2,Control (C),Control,pCun
+133,146,17Networks_LH_ContA_Cingm_1,7Networks_LH_Cont_Cing_1,Control (A),Control,Cingm
+148,147,17Networks_LH_ContC_Cingp_2,7Networks_LH_Cont_Cing_2,Control (C),Control,Cingp
+143,148,17Networks_LH_ContB_PFCmp_1,7Networks_LH_Cont_PFCmp_1,Control (B),Control,PFCmp
+168,149,17Networks_LH_DefaultB_Temp_2,7Networks_LH_Default_Temp_1,Default (B),Default,Temp
+169,150,17Networks_LH_DefaultB_Temp_3,7Networks_LH_Default_Temp_2,Default (B),Default,Temp
+134,151,17Networks_LH_ContB_Temp_1,7Networks_LH_Default_Temp_3,Control (B),Default,Temp
+170,152,17Networks_LH_DefaultB_Temp_4,7Networks_LH_Default_Temp_4,Default (B),Default,Temp_4
+195,153,17Networks_LH_TempPar_1,7Networks_LH_Default_Temp_5,Temporal Parietal,Default,TempPar
+171,154,17Networks_LH_DefaultB_Temp_5,7Networks_LH_Default_Temp_6,Default (B),Default,Temp_5
+172,155,17Networks_LH_DefaultB_Temp_6,7Networks_LH_Default_Temp_7,Default (B),Default,Temp_6
+196,156,17Networks_LH_TempPar_2,7Networks_LH_Default_Temp_8,Temporal Parietal,Default,TempPar
+197,157,17Networks_LH_TempPar_3,7Networks_LH_Default_Temp_9,Temporal Parietal,Default,TempPar
+198,158,17Networks_LH_TempPar_4,7Networks_LH_Default_Temp_10,Temporal Parietal,Default,TempPar_4
+200,159,17Networks_LH_TempPar_6,7Networks_LH_Default_Par_1,Temporal Parietal,Default,TempPar_6
+173,160,17Networks_LH_DefaultB_IPL_1,7Networks_LH_Default_Par_2,Default (B),Default,IPL
+188,161,17Networks_LH_DefaultC_IPL_1,7Networks_LH_Default_Par_3,Default (C),Default,IPL
+149,162,17Networks_LH_DefaultA_IPL_1,7Networks_LH_Default_Par_4,Default (A),Default,IPL
+174,163,17Networks_LH_DefaultB_IPL_2,7Networks_LH_Default_Par_5,Default (B),Default,IPL
+150,164,17Networks_LH_DefaultA_IPL_2,7Networks_LH_Default_Par_6,Default (A),Default,IPL
+136,165,17Networks_LH_ContB_IPL_1,7Networks_LH_Default_Par_7,Control (B),Default,IPL
+183,166,17Networks_LH_DefaultB_PFCv_1,7Networks_LH_Default_PFC_1,Default (B),Default,PFCv
+184,167,17Networks_LH_DefaultB_PFCv_2,7Networks_LH_Default_PFC_2,Default (B),Default,PFCv
+161,168,17Networks_LH_DefaultA_PFCm_1,7Networks_LH_Default_PFC_3,Default (A),Default,PFCm
+162,169,17Networks_LH_DefaultA_PFCm_2,7Networks_LH_Default_PFC_4,Default (A),Default,PFCm
+185,170,17Networks_LH_DefaultB_PFCv_3,7Networks_LH_Default_PFC_5,Default (B),Default,PFCv
+141,171,17Networks_LH_ContB_PFClv_2,7Networks_LH_Default_PFC_6,Control (B),Default,PFClv
+186,172,17Networks_LH_DefaultB_PFCv_4,7Networks_LH_Default_PFC_7,Default (B),Default,PFCv_4
+163,173,17Networks_LH_DefaultA_PFCm_3,7Networks_LH_Default_PFC_8,Default (A),Default,PFCm
+164,174,17Networks_LH_DefaultA_PFCm_4,7Networks_LH_Default_PFC_9,Default (A),Default,PFCm_4
+187,175,17Networks_LH_DefaultB_PFCv_5,7Networks_LH_Default_PFC_10,Default (B),Default,PFCv_5
+165,176,17Networks_LH_DefaultA_PFCm_5,7Networks_LH_Default_PFC_11,Default (A),Default,PFCm_5
+166,177,17Networks_LH_DefaultA_PFCm_6,7Networks_LH_Default_PFC_12,Default (A),Default,PFCm_6
+175,178,17Networks_LH_DefaultB_PFCd_1,7Networks_LH_Default_PFC_13,Default (B),Default,PFCd
+176,179,17Networks_LH_DefaultB_PFCd_2,7Networks_LH_Default_PFC_14,Default (B),Default,PFCd
+177,180,17Networks_LH_DefaultB_PFCd_3,7Networks_LH_Default_PFC_15,Default (B),Default,PFCd
+151,181,17Networks_LH_DefaultA_PFCd_1,7Networks_LH_Default_PFC_16,Default (A),Default,PFCd
+181,182,17Networks_LH_DefaultB_PFCl_1,7Networks_LH_Default_PFC_17,Default (B),Default,PFCl
+178,183,17Networks_LH_DefaultB_PFCd_4,7Networks_LH_Default_PFC_18,Default (B),Default,PFCd_4
+152,184,17Networks_LH_DefaultA_PFCd_2,7Networks_LH_Default_PFC_19,Default (A),Default,PFCd
+182,185,17Networks_LH_DefaultB_PFCl_2,7Networks_LH_Default_PFC_20,Default (B),Default,PFCl
+139,186,17Networks_LH_ContB_PFCd_1,7Networks_LH_Default_PFC_21,Control (B),Default,PFCd
+153,187,17Networks_LH_DefaultA_PFCd_3,7Networks_LH_Default_PFC_22,Default (A),Default,PFCd
+179,188,17Networks_LH_DefaultB_PFCd_5,7Networks_LH_Default_PFC_23,Default (B),Default,PFCd_5
+180,189,17Networks_LH_DefaultB_PFCd_6,7Networks_LH_Default_PFC_24,Default (B),Default,PFCd_6
+190,190,17Networks_LH_DefaultC_Rsp_2,7Networks_LH_Default_pCunPCC_1,Default (C),Default,Rsp
+191,191,17Networks_LH_DefaultC_Rsp_3,7Networks_LH_Default_pCunPCC_2,Default (C),Default,Rsp
+154,192,17Networks_LH_DefaultA_pCunPCC_1,7Networks_LH_Default_pCunPCC_3,Default (A),Default,pCunPCC
+147,193,17Networks_LH_ContC_Cingp_1,7Networks_LH_Default_pCunPCC_4,Control (C),Default,Cingp
+144,194,17Networks_LH_ContC_pCun_1,7Networks_LH_Default_pCunPCC_5,Control (C),Default,pCun
+155,195,17Networks_LH_DefaultA_pCunPCC_2,7Networks_LH_Default_pCunPCC_6,Default (A),Default,pCunPCC
+156,196,17Networks_LH_DefaultA_pCunPCC_3,7Networks_LH_Default_pCunPCC_7,Default (A),Default,pCunPCC
+157,197,17Networks_LH_DefaultA_pCunPCC_4,7Networks_LH_Default_pCunPCC_8,Default (A),Default,pCunPCC_4
+158,198,17Networks_LH_DefaultA_pCunPCC_5,7Networks_LH_Default_pCunPCC_9,Default (A),Default,pCunPCC_5
+159,199,17Networks_LH_DefaultA_pCunPCC_6,7Networks_LH_Default_pCunPCC_10,Default (A),Default,pCunPCC_6
+160,200,17Networks_LH_DefaultA_pCunPCC_7,7Networks_LH_Default_pCunPCC_11,Default (A),Default,pCunPCC_7
+259,201,17Networks_RH_DorsAttnA_TempOcc_1,7Networks_RH_Vis_1,Dorsal Attention (A),Visual,TempOcc
+390,202,17Networks_RH_DefaultC_PHC_2,7Networks_RH_Vis_2,Default (C),Visual,PHC
+201,203,17Networks_RH_VisCent_ExStr_1,7Networks_RH_Vis_3,Visual (A),Visual,ExStr
+202,204,17Networks_RH_VisCent_ExStr_2,7Networks_RH_Vis_4,Visual (A),Visual,ExStr
+213,205,17Networks_RH_VisPeri_ExStrInf_1,7Networks_RH_Vis_5,Visual (B),Visual,ExStrInf
+203,206,17Networks_RH_VisCent_ExStr_3,7Networks_RH_Vis_6,Visual (A),Visual,ExStr
+214,207,17Networks_RH_VisPeri_ExStrInf_2,7Networks_RH_Vis_7,Visual (B),Visual,ExStrInf
+204,208,17Networks_RH_VisCent_ExStr_4,7Networks_RH_Vis_8,Visual (A),Visual,ExStr_4
+261,209,17Networks_RH_DorsAttnA_TempOcc_3,7Networks_RH_Vis_9,Dorsal Attention (A),Visual,TempOcc
+205,210,17Networks_RH_VisCent_ExStr_5,7Networks_RH_Vis_10,Visual (A),Visual,ExStr_5
+215,211,17Networks_RH_VisPeri_ExStrInf_3,7Networks_RH_Vis_11,Visual (B),Visual,ExStrInf
+216,212,17Networks_RH_VisPeri_ExStrInf_4,7Networks_RH_Vis_12,Visual (B),Visual,ExStrInf_4
+206,213,17Networks_RH_VisCent_ExStr_6,7Networks_RH_Vis_13,Visual (A),Visual,ExStr_6
+217,214,17Networks_RH_VisPeri_ExStrInf_5,7Networks_RH_Vis_14,Visual (B),Visual,ExStrInf_5
+207,215,17Networks_RH_VisCent_Striate_1,7Networks_RH_Vis_15,Visual (A),Visual,Striate
+262,216,17Networks_RH_DorsAttnA_ParOcc_1,7Networks_RH_Vis_16,Dorsal Attention (A),Visual,ParOcc
+387,217,17Networks_RH_DefaultC_Rsp_1,7Networks_RH_Vis_17,Default (C),Visual,Rsp
+208,218,17Networks_RH_VisCent_ExStr_7,7Networks_RH_Vis_18,Visual (A),Visual,ExStr_7
+218,219,17Networks_RH_VisPeri_StriCal_1,7Networks_RH_Vis_19,Visual (B),Visual,StriCal
+219,220,17Networks_RH_VisPeri_StriCal_2,7Networks_RH_Vis_20,Visual (B),Visual,StriCal
+209,221,17Networks_RH_VisCent_ExStr_8,7Networks_RH_Vis_21,Visual (A),Visual,ExStr_8
+210,222,17Networks_RH_VisCent_ExStr_9,7Networks_RH_Vis_22,Visual (A),Visual,ExStr_9
+211,223,17Networks_RH_VisCent_ExStr_10,7Networks_RH_Vis_23,Visual (A),Visual,ExStr0
+220,224,17Networks_RH_VisPeri_ExStrSup_1,7Networks_RH_Vis_24,Visual (B),Visual,ExStrSup
+221,225,17Networks_RH_VisPeri_ExStrSup_2,7Networks_RH_Vis_25,Visual (B),Visual,ExStrSup
+212,226,17Networks_RH_VisCent_ExStr_11,7Networks_RH_Vis_26,Visual (A),Visual,ExStr1
+264,227,17Networks_RH_DorsAttnA_ParOcc_3,7Networks_RH_Vis_27,Dorsal Attention (A),Visual,ParOcc
+222,228,17Networks_RH_VisPeri_ExStrSup_3,7Networks_RH_Vis_28,Visual (B),Visual,ExStrSup
+223,229,17Networks_RH_VisPeri_ExStrSup_4,7Networks_RH_Vis_29,Visual (B),Visual,ExStrSup_4
+265,230,17Networks_RH_DorsAttnA_SPL_1,7Networks_RH_Vis_30,Dorsal Attention (A),Visual,SPL
+244,231,17Networks_RH_SomMotB_Aud_1,7Networks_RH_SomMot_1,Somatomotor (B),Somatomotor,SomMotB_Aud
+394,232,17Networks_RH_TempPar_4,7Networks_RH_SomMot_2,Temporal Parietal,Somatomotor,TempPar_4
+245,233,17Networks_RH_SomMotB_Aud_2,7Networks_RH_SomMot_3,Somatomotor (B),Somatomotor,SomMotB_Aud
+246,234,17Networks_RH_SomMotB_Ins_1,7Networks_RH_SomMot_4,Somatomotor (B),Somatomotor,SomMotB_Ins
+247,235,17Networks_RH_SomMotB_S2_1,7Networks_RH_SomMot_5,Somatomotor (B),Somatomotor,SomMotB_S2
+248,236,17Networks_RH_SomMotB_S2_2,7Networks_RH_SomMot_6,Somatomotor (B),Somatomotor,SomMotB_S2
+249,237,17Networks_RH_SomMotB_Aud_3,7Networks_RH_SomMot_7,Somatomotor (B),Somatomotor,SomMotB_Aud
+398,238,17Networks_RH_TempPar_8,7Networks_RH_SomMot_8,Temporal Parietal,Somatomotor,TempPar_8
+250,239,17Networks_RH_SomMotB_S2_3,7Networks_RH_SomMot_9,Somatomotor (B),Somatomotor,SomMotB_S2
+251,240,17Networks_RH_SomMotB_S2_4,7Networks_RH_SomMot_10,Somatomotor (B),Somatomotor,SomMotB_S2_4
+252,241,17Networks_RH_SomMotB_S2_5,7Networks_RH_SomMot_11,Somatomotor (B),Somatomotor,SomMotB_S2_5
+253,242,17Networks_RH_SomMotB_S2_6,7Networks_RH_SomMot_12,Somatomotor (B),Somatomotor,SomMotB_S2_6
+254,243,17Networks_RH_SomMotB_S2_7,7Networks_RH_SomMot_13,Somatomotor (B),Somatomotor,SomMotB_S2_7
+255,244,17Networks_RH_SomMotB_S2_8,7Networks_RH_SomMot_14,Somatomotor (B),Somatomotor,SomMotB_S2_8
+256,245,17Networks_RH_SomMotB_Cent_1,7Networks_RH_SomMot_15,Somatomotor (B),Somatomotor,SomMotB_Cent
+257,246,17Networks_RH_SomMotB_Cent_2,7Networks_RH_SomMot_16,Somatomotor (B),Somatomotor,SomMotB_Cent
+274,247,17Networks_RH_DorsAttnB_PostC_1,7Networks_RH_SomMot_17,Dorsal Attention (B),Somatomotor,PostC
+258,248,17Networks_RH_SomMotB_Cent_3,7Networks_RH_SomMot_18,Somatomotor (B),Somatomotor,SomMotB_Cent
+224,249,17Networks_RH_SomMotA_1,7Networks_RH_SomMot_19,Somatomotor (A),Somatomotor,SomMotA
+297,250,17Networks_RH_SalVentAttnA_ParMed_1,7Networks_RH_SomMot_20,Salience / Ven Att (A),Somatomotor,ParMed
+225,251,17Networks_RH_SomMotA_2,7Networks_RH_SomMot_21,Somatomotor (A),Somatomotor,SomMotA
+226,252,17Networks_RH_SomMotA_3,7Networks_RH_SomMot_22,Somatomotor (A),Somatomotor,SomMotA
+227,253,17Networks_RH_SomMotA_4,7Networks_RH_SomMot_23,Somatomotor (A),Somatomotor,SomMotA_4
+228,254,17Networks_RH_SomMotA_5,7Networks_RH_SomMot_24,Somatomotor (A),Somatomotor,SomMotA_5
+229,255,17Networks_RH_SomMotA_6,7Networks_RH_SomMot_25,Somatomotor (A),Somatomotor,SomMotA_6
+230,256,17Networks_RH_SomMotA_7,7Networks_RH_SomMot_26,Somatomotor (A),Somatomotor,SomMotA_7
+231,257,17Networks_RH_SomMotA_8,7Networks_RH_SomMot_27,Somatomotor (A),Somatomotor,SomMotA_8
+232,258,17Networks_RH_SomMotA_9,7Networks_RH_SomMot_28,Somatomotor (A),Somatomotor,SomMotA_9
+233,259,17Networks_RH_SomMotA_10,7Networks_RH_SomMot_29,Somatomotor (A),Somatomotor,SomMotA0
+234,260,17Networks_RH_SomMotA_11,7Networks_RH_SomMot_30,Somatomotor (A),Somatomotor,SomMotA1
+235,261,17Networks_RH_SomMotA_12,7Networks_RH_SomMot_31,Somatomotor (A),Somatomotor,SomMotA2
+236,262,17Networks_RH_SomMotA_13,7Networks_RH_SomMot_32,Somatomotor (A),Somatomotor,SomMotA3
+237,263,17Networks_RH_SomMotA_14,7Networks_RH_SomMot_33,Somatomotor (A),Somatomotor,SomMotA4
+238,264,17Networks_RH_SomMotA_15,7Networks_RH_SomMot_34,Somatomotor (A),Somatomotor,SomMotA5
+239,265,17Networks_RH_SomMotA_16,7Networks_RH_SomMot_35,Somatomotor (A),Somatomotor,SomMotA6
+240,266,17Networks_RH_SomMotA_17,7Networks_RH_SomMot_36,Somatomotor (A),Somatomotor,SomMotA7
+281,267,17Networks_RH_DorsAttnB_PostC_8,7Networks_RH_SomMot_37,Dorsal Attention (B),Somatomotor,PostC_8
+241,268,17Networks_RH_SomMotA_18,7Networks_RH_SomMot_38,Somatomotor (A),Somatomotor,SomMotA8
+242,269,17Networks_RH_SomMotA_19,7Networks_RH_SomMot_39,Somatomotor (A),Somatomotor,SomMotA9
+243,270,17Networks_RH_SomMotA_20,7Networks_RH_SomMot_40,Somatomotor (A),Somatomotor,SomMotA0
+260,271,17Networks_RH_DorsAttnA_TempOcc_2,7Networks_RH_DorsAttn_Post_1,Dorsal Attention (A),Dorsal Attn,TempOcc
+273,272,17Networks_RH_DorsAttnB_TempOcc_1,7Networks_RH_DorsAttn_Post_2,Dorsal Attention (B),Dorsal Attn,TempOcc
+263,273,17Networks_RH_DorsAttnA_ParOcc_2,7Networks_RH_DorsAttn_Post_3,Dorsal Attention (A),Dorsal Attn,ParOcc
+386,274,17Networks_RH_DefaultC_IPL_2,7Networks_RH_DorsAttn_Post_4,Default (C),Dorsal Attn,IPL
+266,275,17Networks_RH_DorsAttnA_SPL_2,7Networks_RH_DorsAttn_Post_5,Dorsal Attention (A),Dorsal Attn,SPL
+275,276,17Networks_RH_DorsAttnB_PostC_2,7Networks_RH_DorsAttn_Post_6,Dorsal Attention (B),Dorsal Attn,PostC
+267,277,17Networks_RH_DorsAttnA_SPL_3,7Networks_RH_DorsAttn_Post_7,Dorsal Attention (A),Dorsal Attn,SPL
+276,278,17Networks_RH_DorsAttnB_PostC_3,7Networks_RH_DorsAttn_Post_8,Dorsal Attention (B),Dorsal Attn,PostC
+277,279,17Networks_RH_DorsAttnB_PostC_4,7Networks_RH_DorsAttn_Post_9,Dorsal Attention (B),Dorsal Attn,PostC_4
+268,280,17Networks_RH_DorsAttnA_SPL_4,7Networks_RH_DorsAttn_Post_10,Dorsal Attention (A),Dorsal Attn,SPL_4
+328,281,17Networks_RH_ContA_IPS_4,7Networks_RH_DorsAttn_Post_11,Control (A),Dorsal Attn,IPS_4
+269,282,17Networks_RH_DorsAttnA_SPL_5,7Networks_RH_DorsAttn_Post_12,Dorsal Attention (A),Dorsal Attn,SPL_5
+278,283,17Networks_RH_DorsAttnB_PostC_5,7Networks_RH_DorsAttn_Post_13,Dorsal Attention (B),Dorsal Attn,PostC_5
+270,284,17Networks_RH_DorsAttnA_SPL_6,7Networks_RH_DorsAttn_Post_14,Dorsal Attention (A),Dorsal Attn,SPL_6
+355,285,17Networks_RH_ContC_pCun_5,7Networks_RH_DorsAttn_Post_15,Control (C),Dorsal Attn,pCun_5
+271,286,17Networks_RH_DorsAttnA_SPL_7,7Networks_RH_DorsAttn_Post_16,Dorsal Attention (A),Dorsal Attn,SPL_7
+279,287,17Networks_RH_DorsAttnB_PostC_6,7Networks_RH_DorsAttn_Post_17,Dorsal Attention (B),Dorsal Attn,PostC_6
+272,288,17Networks_RH_DorsAttnA_SPL_8,7Networks_RH_DorsAttn_Post_18,Dorsal Attention (A),Dorsal Attn,SPL_8
+280,289,17Networks_RH_DorsAttnB_PostC_7,7Networks_RH_DorsAttn_Post_19,Dorsal Attention (B),Dorsal Attn,PostC_7
+282,290,17Networks_RH_DorsAttnB_FEF_1,7Networks_RH_DorsAttn_FEF_1,Dorsal Attention (B),Dorsal Attn,FEF
+283,291,17Networks_RH_DorsAttnB_FEF_2,7Networks_RH_DorsAttn_FEF_2,Dorsal Attention (B),Dorsal Attn,FEF
+284,292,17Networks_RH_DorsAttnB_FEF_3,7Networks_RH_DorsAttn_FEF_3,Dorsal Attention (B),Dorsal Attn,FEF
+333,293,17Networks_RH_ContA_PFCl_4,7Networks_RH_DorsAttn_PrCv_1,Control (A),Dorsal Attn,PFCl_4
+396,294,17Networks_RH_TempPar_6,7Networks_RH_SalVentAttn_TempOccPar_1,Temporal Parietal,Salience / Ventral Attn,TempPar_6
+397,295,17Networks_RH_TempPar_7,7Networks_RH_SalVentAttn_TempOccPar_2,Temporal Parietal,Salience / Ventral Attn,TempPar_7
+400,296,17Networks_RH_TempPar_10,7Networks_RH_SalVentAttn_TempOccPar_3,Temporal Parietal,Salience / Ventral Attn,TempPar0
+285,297,17Networks_RH_SalVentAttnA_ParOper_1,7Networks_RH_SalVentAttn_TempOccPar_4,Salience / Ven Att (A),Salience / Ventral Attn,ParOper
+286,298,17Networks_RH_SalVentAttnA_ParOper_2,7Networks_RH_SalVentAttn_TempOccPar_5,Salience / Ven Att (A),Salience / Ventral Attn,ParOper
+287,299,17Networks_RH_SalVentAttnA_ParOper_3,7Networks_RH_SalVentAttn_TempOccPar_6,Salience / Ven Att (A),Salience / Ventral Attn,ParOper
+304,300,17Networks_RH_SalVentAttnB_IPL_1,7Networks_RH_SalVentAttn_TempOccPar_7,Salience / Ven Att (B),Salience / Ventral Attn,IPL
+288,301,17Networks_RH_SalVentAttnA_PrC_1,7Networks_RH_SalVentAttn_PrC_1,Salience / Ven Att (A),Salience / Ventral Attn,PrC
+289,302,17Networks_RH_SalVentAttnA_Ins_1,7Networks_RH_SalVentAttn_FrOperIns_1,Salience / Ven Att (A),Salience / Ventral Attn,Ins
+290,303,17Networks_RH_SalVentAttnA_Ins_2,7Networks_RH_SalVentAttn_FrOperIns_2,Salience / Ven Att (A),Salience / Ventral Attn,Ins
+291,304,17Networks_RH_SalVentAttnA_Ins_3,7Networks_RH_SalVentAttn_FrOperIns_3,Salience / Ven Att (A),Salience / Ventral Attn,Ins
+292,305,17Networks_RH_SalVentAttnA_Ins_4,7Networks_RH_SalVentAttn_FrOperIns_4,Salience / Ven Att (A),Salience / Ventral Attn,Ins_4
+310,306,17Networks_RH_SalVentAttnB_Ins_2,7Networks_RH_SalVentAttn_FrOperIns_5,Salience / Ven Att (B),Salience / Ventral Attn,Ins
+293,307,17Networks_RH_SalVentAttnA_FrOper_1,7Networks_RH_SalVentAttn_FrOperIns_6,Salience / Ven Att (A),Salience / Ventral Attn,FrOper
+294,308,17Networks_RH_SalVentAttnA_FrOper_2,7Networks_RH_SalVentAttn_FrOperIns_7,Salience / Ven Att (A),Salience / Ventral Attn,FrOper
+295,309,17Networks_RH_SalVentAttnA_FrOper_3,7Networks_RH_SalVentAttn_FrOperIns_8,Salience / Ven Att (A),Salience / Ventral Attn,FrOper
+308,310,17Networks_RH_SalVentAttnB_PFCl_3,7Networks_RH_SalVentAttn_PFCl_1,Salience / Ven Att (B),Salience / Ventral Attn,PFCl
+312,311,17Networks_RH_SalVentAttnB_PFCmp_2,7Networks_RH_SalVentAttn_Med_1,Salience / Ven Att (B),Salience / Ventral Attn,PFCmp
+296,312,17Networks_RH_SalVentAttnA_FrMed_1,7Networks_RH_SalVentAttn_Med_2,Salience / Ven Att (A),Salience / Ventral Attn,FrMed
+298,313,17Networks_RH_SalVentAttnA_ParMed_2,7Networks_RH_SalVentAttn_Med_3,Salience / Ven Att (A),Salience / Ventral Attn,ParMed
+299,314,17Networks_RH_SalVentAttnA_FrMed_2,7Networks_RH_SalVentAttn_Med_4,Salience / Ven Att (A),Salience / Ventral Attn,FrMed
+300,315,17Networks_RH_SalVentAttnA_ParMed_3,7Networks_RH_SalVentAttn_Med_5,Salience / Ven Att (A),Salience / Ventral Attn,ParMed
+301,316,17Networks_RH_SalVentAttnA_ParMed_4,7Networks_RH_SalVentAttn_Med_6,Salience / Ven Att (A),Salience / Ventral Attn,ParMed_4
+302,317,17Networks_RH_SalVentAttnA_FrMed_3,7Networks_RH_SalVentAttn_Med_7,Salience / Ven Att (A),Salience / Ventral Attn,FrMed
+303,318,17Networks_RH_SalVentAttnA_FrMed_4,7Networks_RH_SalVentAttn_Med_8,Salience / Ven Att (A),Salience / Ventral Attn,FrMed_4
+313,319,17Networks_RH_LimbicB_OFC_1,7Networks_RH_Limbic_OFC_1,Limbic (B),Limbic,OFC
+314,320,17Networks_RH_LimbicB_OFC_2,7Networks_RH_Limbic_OFC_2,Limbic (B),Limbic,OFC
+315,321,17Networks_RH_LimbicB_OFC_3,7Networks_RH_Limbic_OFC_3,Limbic (B),Limbic,OFC
+316,322,17Networks_RH_LimbicB_OFC_4,7Networks_RH_Limbic_OFC_4,Limbic (B),Limbic,OFC_4
+317,323,17Networks_RH_LimbicB_OFC_5,7Networks_RH_Limbic_OFC_5,Limbic (B),Limbic,OFC_5
+318,324,17Networks_RH_LimbicB_OFC_6,7Networks_RH_Limbic_OFC_6,Limbic (B),Limbic,OFC_6
+319,325,17Networks_RH_LimbicA_TempPole_1,7Networks_RH_Limbic_TempPole_1,Limbic (A),Limbic,TempPole
+320,326,17Networks_RH_LimbicA_TempPole_2,7Networks_RH_Limbic_TempPole_2,Limbic (A),Limbic,TempPole
+321,327,17Networks_RH_LimbicA_TempPole_3,7Networks_RH_Limbic_TempPole_3,Limbic (A),Limbic,TempPole
+322,328,17Networks_RH_LimbicA_TempPole_4,7Networks_RH_Limbic_TempPole_4,Limbic (A),Limbic,TempPole_4
+323,329,17Networks_RH_LimbicA_TempPole_5,7Networks_RH_Limbic_TempPole_5,Limbic (A),Limbic,TempPole_5
+324,330,17Networks_RH_LimbicA_TempPole_6,7Networks_RH_Limbic_TempPole_6,Limbic (A),Limbic,TempPole_6
+389,331,17Networks_RH_DefaultC_PHC_1,7Networks_RH_Limbic_TempPole_7,Default (C),Limbic,PHC
+339,332,17Networks_RH_ContB_IPL_2,7Networks_RH_Cont_Par_1,Control (B),Control,IPL
+340,333,17Networks_RH_ContB_IPL_3,7Networks_RH_Cont_Par_2,Control (B),Control,IPL
+325,334,17Networks_RH_ContA_IPS_1,7Networks_RH_Cont_Par_3,Control (A),Control,IPS
+326,335,17Networks_RH_ContA_IPS_2,7Networks_RH_Cont_Par_4,Control (A),Control,IPS
+327,336,17Networks_RH_ContA_IPS_3,7Networks_RH_Cont_Par_5,Control (A),Control,IPS
+341,337,17Networks_RH_ContB_IPL_4,7Networks_RH_Cont_Par_6,Control (B),Control,IPL_4
+336,338,17Networks_RH_ContB_Temp_1,7Networks_RH_Cont_Temp_1,Control (B),Control,Temp
+337,339,17Networks_RH_ContB_Temp_2,7Networks_RH_Cont_Temp_2,Control (B),Control,Temp
+309,340,17Networks_RH_SalVentAttnB_Ins_1,7Networks_RH_Cont_PFCv_1,Salience / Ven Att (B),Control,Ins
+347,341,17Networks_RH_ContB_PFClv_2,7Networks_RH_Cont_PFCl_1,Control (B),Control,PFClv
+348,342,17Networks_RH_ContB_PFClv_3,7Networks_RH_Cont_PFCl_2,Control (B),Control,PFClv
+349,343,17Networks_RH_ContB_PFClv_4,7Networks_RH_Cont_PFCl_3,Control (B),Control,PFClv_4
+305,344,17Networks_RH_SalVentAttnB_PFClv_1,7Networks_RH_Cont_PFCl_4,Salience / Ven Att (B),Control,PFClv
+306,345,17Networks_RH_SalVentAttnB_PFCl_1,7Networks_RH_Cont_PFCl_5,Salience / Ven Att (B),Control,PFCl
+330,346,17Networks_RH_ContA_PFCl_1,7Networks_RH_Cont_PFCl_6,Control (A),Control,PFCl
+331,347,17Networks_RH_ContA_PFCl_2,7Networks_RH_Cont_PFCl_7,Control (A),Control,PFCl
+307,348,17Networks_RH_SalVentAttnB_PFCl_2,7Networks_RH_Cont_PFCl_8,Salience / Ven Att (B),Control,PFCl
+332,349,17Networks_RH_ContA_PFCl_3,7Networks_RH_Cont_PFCl_9,Control (A),Control,PFCl
+334,350,17Networks_RH_ContA_PFCl_5,7Networks_RH_Cont_PFCl_10,Control (A),Control,PFCl_5
+342,351,17Networks_RH_ContB_PFCld_1,7Networks_RH_Cont_PFCl_11,Control (B),Control,PFCld
+343,352,17Networks_RH_ContB_PFCld_2,7Networks_RH_Cont_PFCl_12,Control (B),Control,PFCld
+344,353,17Networks_RH_ContB_PFCld_3,7Networks_RH_Cont_PFCl_13,Control (B),Control,PFCld
+345,354,17Networks_RH_ContB_PFCld_4,7Networks_RH_Cont_PFCl_14,Control (B),Control,PFCld_4
+329,355,17Networks_RH_ContA_PFCd_1,7Networks_RH_Cont_PFCl_15,Control (A),Control,PFCd
+352,356,17Networks_RH_ContC_pCun_2,7Networks_RH_Cont_pCun_1,Control (C),Control,pCun
+353,357,17Networks_RH_ContC_pCun_3,7Networks_RH_Cont_pCun_2,Control (C),Control,pCun
+357,358,17Networks_RH_ContC_Cingp_2,7Networks_RH_Cont_Cing_1,Control (C),Control,Cingp
+335,359,17Networks_RH_ContA_Cingm_1,7Networks_RH_Cont_Cing_2,Control (A),Control,Cingm
+311,360,17Networks_RH_SalVentAttnB_PFCmp_1,7Networks_RH_Cont_PFCmp_1,Salience / Ven Att (B),Control,PFCmp
+350,361,17Networks_RH_ContB_PFCmp_1,7Networks_RH_Cont_PFCmp_2,Control (B),Control,PFCmp
+399,362,17Networks_RH_TempPar_9,7Networks_RH_Default_Par_1,Temporal Parietal,Default,TempPar_9
+385,363,17Networks_RH_DefaultC_IPL_1,7Networks_RH_Default_Par_2,Default (C),Default,IPL
+359,364,17Networks_RH_DefaultA_IPL_1,7Networks_RH_Default_Par_3,Default (A),Default,IPL
+338,365,17Networks_RH_ContB_IPL_1,7Networks_RH_Default_Par_4,Control (B),Default,IPL
+360,366,17Networks_RH_DefaultA_IPL_2,7Networks_RH_Default_Par_5,Default (A),Default,IPL
+376,367,17Networks_RH_DefaultB_AntTemp_1,7Networks_RH_Default_Temp_1,Default (B),Default,AntTemp
+358,368,17Networks_RH_DefaultA_Temp_1,7Networks_RH_Default_Temp_2,Default (A),Default,Temp
+391,369,17Networks_RH_TempPar_1,7Networks_RH_Default_Temp_3,Temporal Parietal,Default,TempPar
+392,370,17Networks_RH_TempPar_2,7Networks_RH_Default_Temp_4,Temporal Parietal,Default,TempPar
+374,371,17Networks_RH_DefaultB_Temp_1,7Networks_RH_Default_Temp_5,Default (B),Default,Temp
+393,372,17Networks_RH_TempPar_3,7Networks_RH_Default_Temp_6,Temporal Parietal,Default,TempPar
+375,373,17Networks_RH_DefaultB_Temp_2,7Networks_RH_Default_Temp_7,Default (B),Default,Temp
+395,374,17Networks_RH_TempPar_5,7Networks_RH_Default_Temp_8,Temporal Parietal,Default,TempPar_5
+382,375,17Networks_RH_DefaultB_PFCv_1,7Networks_RH_Default_PFCv_1,Default (B),Default,PFCv
+346,376,17Networks_RH_ContB_PFClv_1,7Networks_RH_Default_PFCv_2,Control (B),Default,PFClv
+383,377,17Networks_RH_DefaultB_PFCv_2,7Networks_RH_Default_PFCv_3,Default (B),Default,PFCv
+384,378,17Networks_RH_DefaultB_PFCv_3,7Networks_RH_Default_PFCv_4,Default (B),Default,PFCv
+368,379,17Networks_RH_DefaultA_PFCm_1,7Networks_RH_Default_PFCdPFCm_1,Default (A),Default,PFCm
+369,380,17Networks_RH_DefaultA_PFCm_2,7Networks_RH_Default_PFCdPFCm_2,Default (A),Default,PFCm
+370,381,17Networks_RH_DefaultA_PFCm_3,7Networks_RH_Default_PFCdPFCm_3,Default (A),Default,PFCm
+371,382,17Networks_RH_DefaultA_PFCm_4,7Networks_RH_Default_PFCdPFCm_4,Default (A),Default,PFCm_4
+372,383,17Networks_RH_DefaultA_PFCm_5,7Networks_RH_Default_PFCdPFCm_5,Default (A),Default,PFCm_5
+373,384,17Networks_RH_DefaultA_PFCm_6,7Networks_RH_Default_PFCdPFCm_6,Default (A),Default,PFCm_6
+377,385,17Networks_RH_DefaultB_PFCd_1,7Networks_RH_Default_PFCdPFCm_7,Default (B),Default,PFCd
+378,386,17Networks_RH_DefaultB_PFCd_2,7Networks_RH_Default_PFCdPFCm_8,Default (B),Default,PFCd
+379,387,17Networks_RH_DefaultB_PFCd_3,7Networks_RH_Default_PFCdPFCm_9,Default (B),Default,PFCd
+361,388,17Networks_RH_DefaultA_PFCd_1,7Networks_RH_Default_PFCdPFCm_10,Default (A),Default,PFCd
+380,389,17Networks_RH_DefaultB_PFCd_4,7Networks_RH_Default_PFCdPFCm_11,Default (B),Default,PFCd_4
+362,390,17Networks_RH_DefaultA_PFCd_2,7Networks_RH_Default_PFCdPFCm_12,Default (A),Default,PFCd
+381,391,17Networks_RH_DefaultB_PFCd_5,7Networks_RH_Default_PFCdPFCm_13,Default (B),Default,PFCd_5
+388,392,17Networks_RH_DefaultC_Rsp_2,7Networks_RH_Default_pCunPCC_1,Default (C),Default,Rsp
+356,393,17Networks_RH_ContC_Cingp_1,7Networks_RH_Default_pCunPCC_2,Control (C),Default,Cingp
+351,394,17Networks_RH_ContC_pCun_1,7Networks_RH_Default_pCunPCC_3,Control (C),Default,pCun
+363,395,17Networks_RH_DefaultA_pCunPCC_1,7Networks_RH_Default_pCunPCC_4,Default (A),Default,pCunPCC
+364,396,17Networks_RH_DefaultA_pCunPCC_2,7Networks_RH_Default_pCunPCC_5,Default (A),Default,pCunPCC
+365,397,17Networks_RH_DefaultA_pCunPCC_3,7Networks_RH_Default_pCunPCC_6,Default (A),Default,pCunPCC
+366,398,17Networks_RH_DefaultA_pCunPCC_4,7Networks_RH_Default_pCunPCC_7,Default (A),Default,pCunPCC_4
+367,399,17Networks_RH_DefaultA_pCunPCC_5,7Networks_RH_Default_pCunPCC_8,Default (A),Default,pCunPCC_5
+354,400,17Networks_RH_ContC_pCun_4,7Networks_RH_Default_pCunPCC_9,Control (C),Default,pCun_4

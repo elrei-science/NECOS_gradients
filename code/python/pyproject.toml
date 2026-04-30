@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "necos-rs-gradient-analysis"
+version = "0.1.0"
+description = "Python script for NECOS resting-state gradient analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary research code for publication release" }
+authors = [
+	{ name = "Agata Patyczek" },
+	{ name = "Elias Reinwarth" },
+	{ name = "Samyogita Hardikar" }
+]
+dependencies = [
+	"numpy>=1.24",
+	"pandas>=2.0",
+	"nilearn>=0.10",
+	"brainspace>=0.1.10"
+]
+
+[project.optional-dependencies]
+dev = [
+	"ipykernel>=6.29"
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

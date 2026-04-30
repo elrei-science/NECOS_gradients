@@ -1,0 +1,19 @@
+{
+  "Name": "NECOS parcel gradient positions across resting states",
+  "BIDSVersion": "1.9.0",
+  "DatasetType": "derivative",
+  "GeneratedBy": [
+    {
+      "Name": "create_necos_gradient_bids_repo.sh",
+      "Description": "Reorganized parcel gradient CSV exports into a BIDS-like derivatives repository."
+    }
+  ],
+  "SourceDatasets": [
+    {
+      "Description": "Original NECOS rs2 and rs3 gradient exports reorganized into this derivative dataset."
+    },
+    {
+      "Description": "Original NECOS rs1, rs4, rs5, and rs6 gradient exports reorganized into this derivative dataset."
+    }
+  ]
+}

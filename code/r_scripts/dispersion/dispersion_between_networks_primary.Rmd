@@ -1,0 +1,540 @@
+---
+title: "NECOS_Network"
+author: "Agata & Elias"
+date: "2024-01-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading necessary libraries
+
+```{r, include=F}
+library(readr)
+library(purrr)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(car)
+library(tidyr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(lmerTest)
+library(lme4)
+library(dplyr)
+library(afex)
+
+helper_candidates <- c(
+  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
+  file.path(getwd(), "..", "shared", "project_paths.R"),
+  file.path(getwd(), "shared", "project_paths.R")
+)
+helper_path <- helper_candidates[file.exists(helper_candidates)][1]
+if (is.na(helper_path)) {
+  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+}
+source(helper_path)
+
+paths <- pc_analysis_paths(file.path("dispersion", "between_networks"))
+tables_dir <- paths$tables_dir
+models_dir <- paths$models_dir
+figures_dir <- paths$figures_dir
+diagnostics_dir <- paths$diagnostics_dir
+```
+
+## Making folders for Data, plots, and models
+
+```{r}
+invisible(paths)
+
+pc_ensure_dirs(tables_dir, models_dir, figures_dir, diagnostics_dir)
+
+diag_hist_dir <- file.path(diagnostics_dir, "histograms")
+diag_qq_dir <- file.path(diagnostics_dir, "qq_plots")
+diag_resid_dir <- file.path(diagnostics_dir, "residual_plots")
+pc_ensure_dirs(diag_hist_dir, diag_qq_dir, diag_resid_dir)
+
+```
+
+## Compute Dispersion
+
+
+## import dataset with all gradients
+
+```{r}
+combined_gradients <- pc_read_gradients(c("rs2", "rs3"), data_root = paths$data_root) %>%
+  select(NECOS_ID, scan, parcel, V1, V2, V3)
+
+# Load and process IV dataframe
+IV <- pc_mean_fd(paths$data_root, scans = c("rest2", "rest3")) %>%
+  select(NECOS_ID, scan, headmotion, stress = Group)
+
+parcel_labels <- pc_parcel_labels(paths$data_root) %>%
+  select(X7networks_order,X7networks)%>%
+  rename(parcel = X7networks_order)
+
+
+# Merging the gradients data with IV
+final_data <- merge(IV, combined_gradients, by = c("NECOS_ID", "scan"))
+final_data <- merge(parcel_labels[c("parcel", "X7networks")], final_data, by = c("parcel"))
+
+pc_write_csv(final_data, file.path(tables_dir, "dispersion_gradients_parcel_labels_iv.csv"))
+
+```
+
+## create the centroid dataset
+
+calculate the centroid of the network as the mean of all parcels in the 3D space
+```{r}
+# Next we calculate the centroid for each network based on its corresponding parcels
+
+library(dplyr)
+
+mean_centroids <- final_data %>%
+  group_by(NECOS_ID, X7networks, scan) %>%
+  summarise(
+    mean_V1 = mean(V1, na.rm = TRUE),
+    mean_V2 = mean(V2, na.rm = TRUE),
+    mean_V3 = mean(V3, na.rm = TRUE),
+    .groups = "drop"
+  )
+pc_write_csv(mean_centroids, file.path(tables_dir, "dispersion_mean_centroids.csv"))
+
+
+```
+## Compute the distance between the centroids of the salience, control, and control network per participant
+
+```{r}
+
+# Assuming the networks are named as 'Default', 'Control', and 'Salience'
+networks <- c("Default", "Control", "Salience")
+
+# Replace "Salience / Ventral Attn" with "Salience" in the X7networks column
+mean_centroids <- mean_centroids %>%
+  mutate(X7networks = ifelse(X7networks == "Salience / Ventral Attn", "Salience", X7networks))
+
+# Filter to keep only relevant networks
+filtered_data <- mean_centroids %>%
+  filter(X7networks %in% networks)
+
+# Pivot and reshape the data
+wide_data <- filtered_data %>%
+  pivot_wider(names_from = X7networks, values_from = c(mean_V1, mean_V2, mean_V3))
+
+# Compute Euclidean distance for each participant and resting state
+euclidean_distances <- wide_data %>%
+  rowwise() %>%
+  mutate(
+    distance_default_control = sqrt(sum((c(mean_V1_Default, mean_V2_Default, mean_V3_Default) - 
+                                          c(mean_V1_Control, mean_V2_Control, mean_V3_Control))^2)),
+    distance_default_salience = sqrt(sum((c(mean_V1_Default, mean_V2_Default, mean_V3_Default) - 
+                                           c(mean_V1_Salience, mean_V2_Salience, mean_V3_Salience))^2)),
+    distance_control_salience = sqrt(sum((c(mean_V1_Control, mean_V2_Control, mean_V3_Control) - 
+                                           c(mean_V1_Salience, mean_V2_Salience, mean_V3_Salience))^2))
+  ) %>%
+  select(NECOS_ID, scan, distance_default_control, distance_default_salience, distance_control_salience)
+
+
+# Merge IV and euclidean_distances dataframes by "NECOS_ID" and "scan"
+euclidean_distances <- merge(IV, euclidean_distances, by = c("NECOS_ID", "scan"))
+
+# Write the resulting euclidean_distances dataframe to a CSV file
+pc_write_csv(euclidean_distances, file.path(tables_dir, "dispersion_mean_between_distances.csv"))
+```
+
+
+1.  Normality of dependent variable:
+2.  Define model
+3.  Check assumptions of the model
+4.  Model comparison
+5.  Model summary
+6.  FDR correction
+7.  Plots & Figures
+
+### 1. Normality assumption of the dependent variable
+
+**a. histogram**
+
+```{r}
+# Function to create and save histogram
+create_save_histogram <- function(data, distance_column, title_prefix, file_prefix, scan) {
+  # Create histogram plot
+  p <- ggplot(data, aes_string(x = distance_column)) +
+    geom_histogram(bins = 30, fill = "blue", color = "black") +
+    ggtitle(paste(title_prefix, " - ", distance_column, " - Scan: ", scan)) +
+    xlab("Distance") +
+    ylab("Frequency")
+
+  # Construct file path
+  file_path <- file.path(diag_hist_dir, paste0(file_prefix, "_", distance_column, "_", scan, ".svg"))
+
+  # Save the plot
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+# Distance types to plot
+distance_types <- c("distance_default_control", "distance_default_salience", "distance_control_salience")
+
+# Create and save histograms for each distance type and resting state in euclidean_distances
+for(scan in unique(euclidean_distances$scan)) {
+  for(distance in distance_types) {
+    subset_data <- euclidean_distances[euclidean_distances$scan == scan, ]
+    create_save_histogram(subset_data, distance, 
+                          "Mean Distances", "mean_distances", scan)
+  }
+}
+
+
+```
+
+**b. qq-plots**
+
+```{r}
+# Function to create and save QQ plot
+create_save_qqplot <- function(data, distance_column, title_prefix, file_prefix, scan) {
+  # Create QQ plot
+  p <- ggplot(data, aes(sample = !!sym(distance_column))) +
+    stat_qq() +
+    stat_qq_line() +
+    ggtitle(paste(title_prefix, " - ", distance_column, " - Scan: ", scan)) +
+    xlab("Theoretical Quantiles") +
+    ylab("Sample Quantiles")
+
+  # Construct file path
+  file_path <- file.path(diag_qq_dir, paste0(file_prefix, "_", distance_column, "_", scan, ".svg"))
+
+  # Save the plot as SVG
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+# Distance types to plot
+distance_types <- c("distance_default_control", "distance_default_salience", "distance_control_salience")
+
+# Create and save QQ plots for each distance type and resting state in euclidean_distances
+for(scan in unique(euclidean_distances$scan)) {
+  for(distance in distance_types) {
+    subset_data <- euclidean_distances[euclidean_distances$scan == scan, ]
+    create_save_qqplot(subset_data, distance, 
+                       "Mean Distances QQ Plot", "mean_distances_qq", scan)
+  }
+}
+
+
+```
+
+### 2. Define model
+
+Define 3 models of the same type with different dependent variables (between distance of centroids)
+## between network dispersion
+```{r}
+
+# Function to run the model using afex::mixed
+run_model <- function(distance_variable) {
+  # Construct the formula
+  model_formula <- as.formula(paste(distance_variable, "~ stress * scan + headmotion + (1 | NECOS_ID)"))
+
+  # Fit the mixed model using afex::mixed
+  afex_model <- mixed(model_formula, data = euclidean_distances)
+  
+
+  return(afex_model)
+}
+
+# Function to run the model using afex::mixed
+lmer_run_model <- function(distance_variable) {
+  # Construct the formula
+  model_formula <- as.formula(paste(distance_variable, "~ stress * scan + headmotion + (1 | NECOS_ID)"))
+
+  # Fit the mixed model using afex::mixed
+  lmer_model <- lme4::lmer(model_formula, data = euclidean_distances)
+  
+
+  return(lmer_model)
+}
+
+# Run afex models for each distance measure
+afex_model_default_control <- run_model("distance_default_control")
+afex_model_default_salience <- run_model("distance_default_salience")
+afex_model_control_salience <- run_model("distance_control_salience")
+
+# run lmer models for each distance measure to compute plots easier later on
+lmer_model_default_control <- lmer_run_model("distance_default_control")
+lmer_model_default_salience <- lmer_run_model("distance_default_salience")
+lmer_model_control_salience <- lmer_run_model("distance_control_salience")
+
+# extract p-values of afex models
+default_control <- afex_model_default_control$anova_table$`Pr(>F)`
+default_control_p <- default_control[4]
+
+default_salience <- afex_model_default_salience$anova_table$`Pr(>F)`
+default_salience_p <- default_salience[4]
+
+control_salience <- afex_model_control_salience$anova_table$`Pr(>F)`
+control_salience_p <- control_salience[4]
+
+# Extract p-values
+p_values_interaction <- c(
+  default_control_p,
+  default_salience_p,
+  control_salience_p
+)
+
+# Apply Bonferroni correction across all three p-values
+adjusted_p_values <- p.adjust(p_values_interaction, method = "bonferroni")
+
+# Create a data frame with results
+p_value_df <- data.frame(
+  Distance_Type = c("Default_Control", "Default_Salience", "Control_Salience"),
+  P_Value = p_values_interaction,
+  Adjusted_P_Value = adjusted_p_values
+)
+#save df
+pc_write_csv(p_value_df, file.path(models_dir, "dispersion_between_network_pvalues.csv"))
+
+
+# Function to extract relevant summary data from lmer models
+extract_lmer_summary <- function(model) {
+  summary_model <- summary(model)
+  fixed_effects <- summary_model$coefficients
+  random_effects_var <- as.data.frame(VarCorr(model))
+  
+  return(list(fixed_effects = fixed_effects, random_effects_var = random_effects_var))
+}
+
+# Extract summary data from each lmer model
+summary_default_control <- extract_lmer_summary(lmer_model_default_control)
+summary_default_salience <- extract_lmer_summary(lmer_model_default_salience)
+summary_control_salience <- extract_lmer_summary(lmer_model_control_salience)
+
+# Extract fixed effects data into separate data frames
+fe_default_control_df <- as.data.frame(summary_default_control$fixed_effects)
+fe_default_control_df$Model <- "Default_Control"
+
+fe_default_salience_df <- as.data.frame(summary_default_salience$fixed_effects)
+fe_default_salience_df$Model <- "Default_Salience"
+
+fe_control_salience_df <- as.data.frame(summary_control_salience$fixed_effects)
+fe_control_salience_df$Model <- "Control_Salience"
+
+# Combine the fixed effects data frames
+combined_fe_df <- rbind(fe_default_control_df, fe_default_salience_df, fe_control_salience_df)
+
+# Add P_Value and Adjusted_P_Value columns
+combined_fe_df$P_Value_Scan_Stress <- rep(p_values_interaction, each = nrow(combined_fe_df) / 3)
+combined_fe_df$Adjusted_P_Value_Scan_Stress <- rep(adjusted_p_values, each = nrow(combined_fe_df) / 3)
+
+# Save the combined data frame
+pc_write_csv(combined_fe_df, file.path(models_dir, "dispersion_between_network_model_results.csv"))
+
+
+
+
+```
+
+
+### 3. Check model assumptions
+
+**a. normality of residuals**
+
+```{r }
+
+# Function to create and save QQ plot for model residuals
+create_save_qqplot_residuals <- function(lmer_model, distance_type, file_prefix, parent_dir) {
+  # Extract residuals
+  res <- residuals(lmer_model)
+
+  # Create a data frame for plotting
+  res_df <- data.frame(residuals = res)
+
+  # Create QQ plot
+  p <- ggplot(res_df, aes(sample = residuals)) +
+    stat_qq() +
+    stat_qq_line() +
+    ggtitle(paste("Residuals QQ Plot - Distance Type:", distance_type)) +
+    xlab("Theoretical Quantiles") +
+    ylab("Sample Quantiles")
+
+  # Construct file path
+  file_path <- file.path(diag_qq_dir, paste0(file_prefix, "_", distance_type, ".svg"))
+
+  # Save the plot
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+# Create and save QQ plots for residuals of your models
+create_save_qqplot_residuals(lmer_model_default_control, "default_control",
+                             "residuals_qq",
+                             parent_dir)
+create_save_qqplot_residuals(lmer_model_default_salience, "default_salience",
+                             "residuals_qq",
+                             parent_dir)
+create_save_qqplot_residuals(lmer_model_control_salience, "control_salience",
+                             "residuals_qq",
+                             parent_dir)
+
+```
+
+**b. homoscadicity**
+
+```{r }
+# Function to create and save scatter plots for assessing homoscedasticity
+create_save_homoscedasticity_plot <- function(lmer_model, distance_type, file_prefix, parent_dir) {
+  # Manually compute fitted values and residuals
+  fitted_values <- predict(lmer_model)
+  residuals <- resid(lmer_model)
+
+  # Create a data frame for plotting
+  df <- data.frame(Fitted = fitted_values, Residuals = residuals)
+
+  # Create scatter plot
+  p <- ggplot(df, aes(x = Fitted, y = Residuals)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    ggtitle(paste("Homoscedasticity Plot - Distance Type:", distance_type)) +
+    xlab("Fitted Values") +
+    ylab("Residuals")
+
+  # Construct file path
+  file_path <- file.path(diag_resid_dir, paste0(file_prefix, "_", distance_type, ".svg"))
+
+  # Save the plot as SVG
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+# Create and save homoscedasticity plots for your models
+create_save_homoscedasticity_plot(lmer_model_default_control, "default_control",
+                                  "homoscedasticity_plot",
+                                  parent_dir)
+create_save_homoscedasticity_plot(lmer_model_default_salience, "default_salience",
+                                  "homoscedasticity_plot",
+                                  parent_dir)
+create_save_homoscedasticity_plot(lmer_model_control_salience, "control_salience",
+                                  "homoscedasticity_plot",
+                                  parent_dir)
+
+```
+
+**c. independence (auto-correlation of the residuals)**
+
+If the p-value is less than 0.05, we can reject the null hypothesis and conclude that the residuals in this regression model are autocorrelated.
+
+Autocorrelation of the residuals should be avoided. Hence, if the p-value if not significant we assume no autocorrelation.
+The interpretation of the Durbin-Watson statistic is generally as follows:
+
+    A value close to 2 indicates no autocorrelation.
+    A value less than 2 suggests positive autocorrelation.
+    A value greater than 2 suggests negative autocorrelation.
+
+
+```{r }
+
+# Apply Durbin-Watson test individually to each vector of residuals
+dw_default_control <- durbinWatsonTest(residuals(lmer_model_default_control))
+dw_default_salience <- durbinWatsonTest(residuals(lmer_model_default_salience))
+dw_control_salience <- durbinWatsonTest(residuals(lmer_model_control_salience))
+
+# Extract the Durbin-Watson statistic from each test result
+dw_values <- c(dw_default_control, dw_default_salience, dw_control_salience)
+
+#Create a data frame to compile the results
+
+durbin_watson_df <- data.frame(
+Model = c("Default_Control", "Default_Salience", "Control_Salience"),
+Durbin_Watson_Statistic = dw_values
+)
+# Convert to a data frame
+durbin_watson_df <- as.data.frame(durbin_watson_df)
+
+# Save the data frame
+pc_write_csv(durbin_watson_df, file.path(diagnostics_dir, "dispersion_between_network_durbin_watson.csv"))
+
+```
+
+**d. multi-collinearity: Variance Inflation Factor (VIF)**
+
+In multiple regression, two or more predictor variables might be correlated with each other. This situation is referred as collinearity.
+
+There is an extreme situation, called multicollinearity, where collinearity exists between three or more variables even if no pair of variables has a particularly high correlation. This means that there is redundancy between predictor variables.
+
+In the presence of multicollinearity, the solution of the regression model becomes unstable.
+
+For a given predictor (p), multicollinearity can assessed by computing a score called the variance inflation factor (or VIF), which measures how much the variance of a regression coefficient is inflated due to multicollinearity in the model.
+
+The smallest possible value of VIF is one (absence of multicollinearity). As a rule of thumb, a VIF value that exceeds 5 or 10 indicates a problematic amount of collinearity (James et al. 2014).
+
+References: James, Gareth, Daniela Witten, Trevor Hastie, and Robert Tibshirani. 2014. An Introduction to Statistical Learning: With Applications in R. Springer Publishing Company, Incorporated.
+
+```{r }
+# List of all lmer models
+all_lmer_models <- list(
+  control_salience = lmer_model_control_salience,
+  default_control = lmer_model_default_control,
+  default_salience = lmer_model_default_salience
+)
+
+# Applying VIF to each model
+multicollinearity <- map(all_lmer_models, vif)
+
+# Extracting names of terms from the first model
+
+terms <- names(multicollinearity[[1]])
+
+#Creating a dataframe
+
+vif_df <- data.frame(Term = terms)
+
+#Adding VIF values for each model to the dataframe
+
+for (model_name in names(multicollinearity)) {
+vif_df[[model_name]] <- multicollinearity[[model_name]]
+}
+
+pc_write_csv(vif_df, file.path(diagnostics_dir, "dispersion_between_network_vif.csv"))
+
+
+```
+
+### 4. Model comparison
+
+Likelihood ratio tests are used to compare the goodness of fit of two statistical models. The LRT compares two hierarchically nested models to determine whether or not adding complexity to your model (i.e., adding more parameters) makes your model significantly more accurate. The "hierarchically nested models" simply means that the complex model differs only from the simpler (or "nested") model by the addition of one or more parameters.
+
+The LRT compares the fuller model against the simpler model and indicates whether the additional parameters improve fit.
+
+```{r }
+# Function to run the reduced model (without interaction of stress and scan)
+lmer_run_reduced_model <- function(distance_variable) {
+    model_formula <- as.formula(paste(distance_variable, "~ stress + scan + headmotion + (1 | NECOS_ID)"))
+    lmer_model <- lmer(model_formula, data = euclidean_distances)
+    return(lmer_model)
+}
+
+# Reduced models
+lmer_model_default_control_reduced <- lmer_run_reduced_model("distance_default_control")
+lmer_model_default_salience_reduced <- lmer_run_reduced_model("distance_default_salience")
+lmer_model_control_salience_reduced <- lmer_run_reduced_model("distance_control_salience")
+
+#Perform Likelihood Ratio Tests (LRT)
+lrt_default_control <- anova(lmer_model_default_control, lmer_model_default_control_reduced)
+lrt_default_salience <- anova(lmer_model_default_salience, lmer_model_default_salience_reduced)
+lrt_control_salience <- anova(lmer_model_control_salience, lmer_model_control_salience_reduced)
+
+#Extract LRT results
+lrt_results <- data.frame(
+Model_Comparison = c("Default_Control", "Default_Salience", "Control_Salience"),
+Chisq = c(lrt_default_control$Chisq[2], lrt_default_salience$Chisq[2], lrt_control_salience$Chisq[2]),
+DF = c(lrt_default_control$Df[2], lrt_default_salience$Df[2], lrt_control_salience$Df[2]),
+P_value = c(lrt_default_control$Pr[2], lrt_default_salience$Pr[2], lrt_control_salience$Pr[2]),
+P_adjusted = p.adjust(c(lrt_default_control$Pr[2], lrt_default_salience$Pr[2], lrt_control_salience$Pr[2]))
+)
+
+#Save the data frame
+
+pc_write_csv(lrt_results, file.path(models_dir, "dispersion_between_network_lrt.csv"))
+```
+
+
+

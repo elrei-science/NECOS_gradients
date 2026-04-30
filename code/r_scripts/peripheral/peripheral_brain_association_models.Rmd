@@ -1,0 +1,1583 @@
+---
+title: "physio_eccentricity_dispersion_models"
+output: html_document
+---
+
+This script tests whether physiological and subjective stress markers are associated with changes in brain eccentricity and dispersion between rest2 and rest3. The baseline-adjusted delta ANCOVAs are treated as the primary inferential models and are the only models entering the multiple-comparison correction procedure. In these ANCOVAs, the change-score outcome is modeled together with the baseline value of the same outcome as an intentional baseline-conditional change parameterization to reduce regression-to-the-mean artefacts; this estimand is a baseline-adjusted association with change rather than an unadjusted raw-difference effect. Correction is reported transparently across the same construct families as before: delta-ANCOVA model-level p-values are corrected within the eccentricity family and within the dispersion family, with an additional global BH correction across both families combined. Three-way random-intercept LMMs with participant-level stress-reactivity predictors are retained separately as lower-power, uncorrected sensitivity analyses and are excluded from all correction pools. Two-way LMMs are no longer part of the primary results summary or correction workflow. The script applies predefined participant and data-point exclusions, performs model diagnostics and sensitivity analyses, and summarizes primary ANCOVA results together with supplementary three-way LMM robustness checks.
+
+# PREPARE LIBRARIES AND FOLDER STRUCTURE
+
+## Load libraries and project paths
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(car)
+library(broom)
+library(broom.mixed)
+library(purrr)
+library(stringr)
+library(jsonlite)
+if (requireNamespace("emmeans", quietly = TRUE)) library(emmeans)
+if (requireNamespace("MuMIn", quietly = TRUE)) library(MuMIn)
+
+options(stringsAsFactors = FALSE)
+options(contrasts = c("contr.sum", "contr.poly"))
+knitr::opts_chunk$set(message = FALSE, warning = TRUE)
+
+helper_candidates <- c(
+  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
+  file.path(getwd(), "..", "shared", "project_paths.R"),
+  file.path(getwd(), "shared", "project_paths.R")
+)
+helper_path <- helper_candidates[file.exists(helper_candidates)][1]
+if (is.na(helper_path)) {
+  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+}
+source(helper_path)
+
+paths <- pc_analysis_paths("peripheral")
+tables_dir <- paths$tables_dir
+models_dir <- paths$models_dir
+diagnostics_dir <- paths$diagnostics_dir
+```
+
+## Make folders for diagnostics and model outputs
+
+```{r}
+pc_ensure_dirs(tables_dir, models_dir, diagnostics_dir)
+
+diag_qq_dir <- file.path(diagnostics_dir, "qq_plots")
+diag_resid_dir <- file.path(diagnostics_dir, "residual_plots")
+pc_ensure_dirs(diag_qq_dir, diag_resid_dir)
+```
+
+# PREPARE DATASET
+
+## Load outcome and predictor tables
+
+```{r}
+path_combined <- file.path(paths$results_root, "eccentricity", "tables", "eccentricity_dv_iv_combined.csv")
+dispersion_path <- file.path(paths$results_root, "dispersion", "between_networks", "tables", "dispersion_mean_between_distances.csv")
+
+eccentricity <- readr::read_csv(path_combined, show_col_types = FALSE)
+dispersion <- readr::read_csv(dispersion_path, show_col_types = FALSE)
+
+physio_hr_hrv_long <- readr::read_csv(file.path(paths$data_root, "physio_hr_hrv_long.csv"), show_col_types = FALSE)
+physio_hr_hrv_delta <- readr::read_csv(file.path(paths$data_root, "physio_hr_hrv_delta.csv"), show_col_types = FALSE)
+physio_baselines <- readr::read_csv(file.path(paths$data_root, "physio_baselines.csv"), show_col_types = FALSE)
+physio_endo_long <- readr::read_csv(file.path(paths$data_root, "physio_endo_long.csv"), show_col_types = FALSE)
+endo_baselines <- readr::read_csv(file.path(paths$data_root, "endo_baselines.csv"), show_col_types = FALSE)
+endo_delta <- readr::read_csv(file.path(paths$data_root, "endo_delta.csv"), show_col_types = FALSE)
+physio_stai_long <- readr::read_csv(file.path(paths$data_root, "physio_stai_long.csv"), show_col_types = FALSE)
+stai_baselines <- readr::read_csv(file.path(paths$data_root, "stai_baselines.csv"), show_col_types = FALSE)
+stai_delta <- readr::read_csv(file.path(paths$data_root, "stai_delta.csv"), show_col_types = FALSE)
+physio_vas_long <- readr::read_csv(file.path(paths$data_root, "physio_vas_long.csv"), show_col_types = FALSE)
+vas_baselines <- readr::read_csv(file.path(paths$data_root, "vas_baselines.csv"), show_col_types = FALSE)
+vas_delta <- readr::read_csv(file.path(paths$data_root, "vas_delta.csv"), show_col_types = FALSE)
+
+if (!requireNamespace("MuMIn", quietly = TRUE)) {
+  message("LMM R-squared output will be skipped unless the 'MuMIn' package is installed.")
+}
+
+if (!requireNamespace("emmeans", quietly = TRUE)) {
+  message("Post-hoc slope tests will be skipped unless the 'emmeans' package is installed.")
+}
+
+run_random_intercept_sensitivity <- TRUE
+```
+
+
+## Prepare base outcome datasets and exclusion rules
+
+```{r}
+standardize_scan <- function(x) {
+  x <- as.character(x)
+  dplyr::case_match(
+    x,
+    "rs_2" ~ "rest2",
+    "rs_3" ~ "rest3",
+    "rest2" ~ "rest2",
+    "rest3" ~ "rest3",
+    "2" ~ "rest2",
+    "3" ~ "rest3",
+    .default = x
+  )
+}
+
+safe_mean <- function(x) {
+  if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
+}
+
+safe_log_pos <- function(x) {
+  ifelse(is.na(x) | !is.finite(x) | x <= 0, NA_real_, log(x))
+}
+
+z_num <- function(x) {
+  as.numeric(scale(x))
+}
+
+# Exclusions aligned to Uhlig et al 2023 analysis
+id_exclude_all <- "NECOS049"
+id_exclude_endo <- c("NECOS049", "NECOS054")
+
+eccentricity_base <- eccentricity %>%
+  rename(Group = stress, MFD = headmotion) %>%
+  mutate(
+    NECOS_ID = as.character(NECOS_ID),
+    Group = factor(Group),
+    scan = standardize_scan(scan),
+    scan = factor(scan, levels = c("rest2", "rest3")),
+    log_MFD_scaled = z_num(safe_log_pos(MFD))
+  ) %>%
+  filter(scan %in% c("rest2", "rest3")) %>%
+  filter(!NECOS_ID %in% id_exclude_all)
+
+dispersion_base <- dispersion %>%
+  rename(Group = stress, MFD = headmotion) %>%
+  mutate(
+    NECOS_ID = as.character(NECOS_ID),
+    Group = factor(Group),
+    scan = standardize_scan(scan),
+    scan = factor(scan, levels = c("rest2", "rest3"))
+  ) %>%
+  filter(scan %in% c("rest2", "rest3")) %>%
+  filter(!NECOS_ID %in% id_exclude_all)
+
+ecc_dv_cols <- c("parcel_100", "parcel_377")
+missing_ecc_dvs <- setdiff(ecc_dv_cols, names(eccentricity_base))
+if (length(missing_ecc_dvs) > 0) {
+  stop("Missing eccentricity DV columns: ", paste(missing_ecc_dvs, collapse = ", "))
+}
+
+disp_dv_cols <- c("distance_default_salience", "distance_control_salience")
+missing_disp_dvs <- setdiff(disp_dv_cols, names(dispersion_base))
+if (length(missing_disp_dvs) > 0) {
+  stop("Missing dispersion DV columns: ", paste(missing_disp_dvs, collapse = ", "))
+}
+
+dispersion_base <- dispersion_base %>%
+  group_by(NECOS_ID, Group, scan) %>%
+  summarise(
+    MFD = safe_mean(MFD),
+    across(all_of(disp_dv_cols), safe_mean),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    log_MFD_scaled = z_num(safe_log_pos(MFD))
+  )
+
+# Sensitivity exclusions are defined at the predictor level, not the outcome-family level.
+# For example, NECOS042 is treated as an influential STAI/VAS delta case regardless of
+# whether the dependent variable is eccentricity or dispersion based on analysis by Uhlig et al. 2023.
+delta_sensitivity_exclude <- list(
+  HR_delta = c("NECOS041", "NECOS055"),
+  HRV_delta = character(0),
+  SaCort_delta = character(0),
+  asinh_ACTH_delta = character(0),
+  STAI_delta = c("NECOS042"),
+  VAS_delta = c("NECOS042")
+)
+
+pc_write_csv(eccentricity_base, file.path(tables_dir, "peripheral_eccentricity_base.csv"))
+pc_write_csv(dispersion_base, file.path(tables_dir, "peripheral_dispersion_base.csv"))
+```
+
+## Prepare physiological predictors
+
+The published repository uses the precomputed derivative predictor tables loaded
+from `data/` at the top of the script. Earlier internal code that rebuilt these
+predictor tables and their endpoint/QC plots from intermediate wide-format input
+objects has been removed from the public version because it was not part of the
+released workflow.
+
+# ANALYSIS
+
+## Build eccentricity delta outcome dataset
+
+```{r}
+make_delta_data <- function(df, dv_cols, id_col = "NECOS_ID", group_col = "Group",
+                            scan_col = "scan", motion_col = "MFD") {
+  rest2 <- df %>%
+    filter(.data[[scan_col]] == "rest2") %>%
+    select(all_of(c(id_col, group_col, motion_col, dv_cols))) %>%
+    rename_with(~ paste0(.x, "_rest2"), all_of(c(motion_col, dv_cols)))
+
+  rest3 <- df %>%
+    filter(.data[[scan_col]] == "rest3") %>%
+    select(all_of(c(id_col, group_col, motion_col, dv_cols))) %>%
+    rename_with(~ paste0(.x, "_rest3"), all_of(c(motion_col, dv_cols)))
+
+  out <- rest2 %>%
+    inner_join(rest3, by = c(id_col, group_col))
+
+  for (dv in dv_cols) {
+    out[[paste0("delta_", dv)]] <- out[[paste0(dv, "_rest3")]] - out[[paste0(dv, "_rest2")]]
+  }
+
+  out$mean_MFD <- rowMeans(
+    cbind(out[[paste0(motion_col, "_rest2")]], out[[paste0(motion_col, "_rest3")]]),
+    na.rm = TRUE
+  )
+  out$log_mean_MFD_scaled <- z_num(safe_log_pos(out$mean_MFD))
+
+  out
+}
+
+ecc_delta_base <- make_delta_data(
+  df = eccentricity_base,
+  dv_cols = ecc_dv_cols,
+  id_col = "NECOS_ID",
+  group_col = "Group",
+  scan_col = "scan",
+  motion_col = "MFD"
+)
+
+pc_write_csv(ecc_delta_base, file.path(tables_dir, "peripheral_eccentricity_delta_base.csv"))
+```
+
+## Build dispersion delta outcome dataset
+
+```{r}
+disp_delta_base <- make_delta_data(
+  df = dispersion_base,
+  dv_cols = disp_dv_cols,
+  id_col = "NECOS_ID",
+  group_col = "Group",
+  scan_col = "scan",
+  motion_col = "MFD"
+)
+
+pc_write_csv(disp_delta_base, file.path(tables_dir, "peripheral_dispersion_delta_base.csv"))
+```
+
+## Prepare eccentricity delta analysis datasets
+
+```{r}
+ecc_delta_hr <- ecc_delta_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HR_delta), by = "NECOS_ID")
+ecc_delta_hrv <- ecc_delta_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HRV_delta), by = "NECOS_ID")
+ecc_delta_saliva <- ecc_delta_base %>%
+  left_join(select(endo_delta, NECOS_ID, SaCort_delta), by = "NECOS_ID") %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+ecc_delta_acth <- ecc_delta_base %>%
+  left_join(select(endo_delta, NECOS_ID, asinh_ACTH_delta), by = "NECOS_ID") %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+ecc_delta_stai <- ecc_delta_base %>%
+  left_join(select(stai_delta, NECOS_ID, STAI_delta), by = "NECOS_ID")
+ecc_delta_vas <- ecc_delta_base %>%
+  left_join(select(vas_delta, NECOS_ID, VAS_delta), by = "NECOS_ID")
+
+ecc_delta_dv_cols <- paste0("delta_", ecc_dv_cols)
+```
+
+## Run eccentricity delta ANCOVAs
+
+```{r}
+sanitize_stub <- function(x) {
+  x %>%
+    gsub("[^A-Za-z0-9_]+", "_", ., perl = TRUE) %>%
+    gsub("_+", "_", ., perl = TRUE)
+}
+
+write_output_metadata <- function(path, description, columns = NULL) {
+  meta_path <- sub("\\.csv$", ".json", path)
+  payload <- list(
+    file = basename(path),
+    description = description,
+    columns = columns
+  )
+  jsonlite::write_json(payload, meta_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
+}
+
+prepare_lm_data <- function(df, dv, predictor_delta_col, predictor_baseline_col = NULL) {
+  dv_rest2_col <- paste0(sub("^delta_", "", dv), "_rest2")
+  cols <- c("NECOS_ID", "Group", "log_mean_MFD_scaled", predictor_delta_col, dv, dv_rest2_col)
+  if (!is.null(predictor_baseline_col)) cols <- c(cols, predictor_baseline_col)
+
+  df %>%
+    select(any_of(cols)) %>%
+    tidyr::drop_na() %>%
+    mutate(Group = droplevels(Group))
+}
+
+count_complete_cases_lm <- function(df, dv, predictor_delta_col, predictor_baseline_col = NULL) {
+  dv_rest2_col <- paste0(sub("^delta_", "", dv), "_rest2")
+  cols <- c("NECOS_ID", "Group", "log_mean_MFD_scaled", predictor_delta_col, dv, dv_rest2_col)
+  if (!is.null(predictor_baseline_col)) cols <- c(cols, predictor_baseline_col)
+
+  dat <- df %>%
+    select(any_of(cols)) %>%
+    tidyr::drop_na()
+
+  tibble(
+    DV = dv,
+    predictor = predictor_delta_col,
+    baseline = ifelse(is.null(predictor_baseline_col), NA_character_, predictor_baseline_col),
+    n_complete_rows = nrow(dat),
+    n_complete_ids = dplyr::n_distinct(dat$NECOS_ID)
+  )
+}
+
+extract_vif_table <- function(vif_obj, dv, predictor_label, outcome_family) {
+  if (is.null(vif_obj)) {
+    return(tibble(
+      DV = dv,
+      predictor = predictor_label,
+      outcome_family = outcome_family,
+      term = NA_character_,
+      vif = NA_real_,
+      gvif_adj = NA_real_
+    ))
+  }
+
+  if (is.matrix(vif_obj) || is.data.frame(vif_obj)) {
+    out <- as.data.frame(vif_obj)
+    out$term <- rownames(out)
+    rownames(out) <- NULL
+
+    if ("GVIF" %in% names(out) && "Df" %in% names(out)) {
+      out <- out %>%
+        transmute(
+          DV = dv,
+          predictor = predictor_label,
+          outcome_family = outcome_family,
+          term = term,
+          vif = GVIF,
+          gvif_adj = GVIF^(1 / (2 * Df))
+        )
+    } else if ("GVIF^(1/(2*Df))" %in% names(out)) {
+      out <- out %>%
+        transmute(
+          DV = dv,
+          predictor = predictor_label,
+          outcome_family = outcome_family,
+          term = term,
+          vif = if ("VIF" %in% names(out)) VIF else NA_real_,
+          gvif_adj = `GVIF^(1/(2*Df))`
+        )
+    } else {
+      out <- out %>%
+        transmute(
+          DV = dv,
+          predictor = predictor_label,
+          outcome_family = outcome_family,
+          term = term,
+          vif = NA_real_,
+          gvif_adj = NA_real_
+        )
+    }
+  } else {
+    out <- tibble(
+      DV = dv,
+      predictor = predictor_label,
+      outcome_family = outcome_family,
+      term = names(vif_obj),
+      vif = as.numeric(vif_obj),
+      gvif_adj = as.numeric(vif_obj)
+    )
+  }
+
+  out
+}
+
+fit_lm_delta_set <- function(df, delta_dv_cols, predictor_delta_col, predictor_baseline_col = NULL) {
+  fit_one <- purrr::safely(function(dv) {
+    dat <- prepare_lm_data(df, dv, predictor_delta_col, predictor_baseline_col)
+    dv_rest2_col <- paste0(sub("^delta_", "", dv), "_rest2")
+
+    if (nrow(dat) < 20) {
+      stop("Insufficient complete data for LM")
+    }
+
+    baseline_part <- paste0(" + ", dv_rest2_col)
+    predictor_baseline_part <- if (!is.null(predictor_baseline_col)) paste0(" + ", predictor_baseline_col) else ""
+
+    stats::lm(
+      as.formula(paste0(dv, " ~ Group * ", predictor_delta_col, baseline_part, predictor_baseline_part, " + log_mean_MFD_scaled")),
+      data = dat
+    )
+  }, otherwise = NULL)
+
+  fit_out <- map(delta_dv_cols, fit_one)
+  models <- purrr::map(fit_out, "result")
+  errors <- purrr::map_chr(fit_out, ~ if (is.null(.x$error)) NA_character_ else conditionMessage(.x$error))
+  names(models) <- delta_dv_cols
+  names(errors) <- delta_dv_cols
+
+  list(models = models, errors = errors)
+}
+
+extract_lm_term <- function(models, fit_errors, term_label_model, term_label_report, predictor_label, baseline_label = NULL, outcome_family, analysis_label, file_stub) {
+  map_df(names(models), function(nm) {
+    mod <- models[[nm]]
+    fit_error <- fit_errors[[nm]]
+
+    if (is.null(mod)) {
+      return(tibble(
+        DV = nm,
+        term = term_label_report,
+        predictor = predictor_label,
+        baseline = ifelse(is.null(baseline_label), NA_character_, baseline_label),
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        model_bundle = paste0(file_stub, "__", predictor_label),
+        n = NA_integer_,
+        convergence = fit_error,
+        test = "type3_anova",
+        f_value = NA_real_,
+        num_df = NA_real_,
+        den_df = NA_real_,
+        eta2_partial = NA_real_,
+        r2 = NA_real_,
+        adj_r2 = NA_real_,
+        p = NA_real_
+      ))
+    }
+
+    an <- tryCatch(car::Anova(mod, type = 3), error = function(e) NULL)
+    if (is.null(an) || !(term_label_model %in% rownames(an))) {
+      return(tibble(
+        DV = nm,
+        term = term_label_report,
+        predictor = predictor_label,
+        baseline = ifelse(is.null(baseline_label), NA_character_, baseline_label),
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        model_bundle = paste0(file_stub, "__", predictor_label),
+        n = stats::nobs(mod),
+        convergence = ifelse(is.na(fit_error), "OK", fit_error),
+        test = "type3_anova",
+        f_value = NA_real_,
+        num_df = NA_real_,
+        den_df = NA_real_,
+        eta2_partial = NA_real_,
+        r2 = summary(mod)$r.squared,
+        adj_r2 = summary(mod)$adj.r.squared,
+        p = NA_real_
+      ))
+    }
+
+    f_value <- as.numeric(an[term_label_model, "F value"])
+    num_df <- as.numeric(an[term_label_model, "Df"])
+    den_df <- stats::df.residual(mod)
+    p_value <- as.numeric(an[term_label_model, "Pr(>F)"])
+    eta2_partial <- if (is.finite(f_value) && is.finite(num_df) && is.finite(den_df)) {
+      (f_value * num_df) / ((f_value * num_df) + den_df)
+    } else {
+      NA_real_
+    }
+
+    tibble(
+      DV = nm,
+      term = term_label_report,
+      predictor = predictor_label,
+      baseline = ifelse(is.null(baseline_label), NA_character_, baseline_label),
+      outcome_family = outcome_family,
+      analysis = analysis_label,
+      model_bundle = paste0(file_stub, "__", predictor_label),
+      n = stats::nobs(mod),
+      convergence = ifelse(is.na(fit_error), "OK", fit_error),
+      test = "type3_anova",
+      f_value = f_value,
+      num_df = num_df,
+      den_df = den_df,
+      eta2_partial = eta2_partial,
+      r2 = summary(mod)$r.squared,
+      adj_r2 = summary(mod)$adj.r.squared,
+      p = p_value
+    )
+  })
+}
+
+extract_lm_vif <- function(df, dv_cols, predictor_col, predictor_baseline_col = NULL, outcome_family) {
+  map_df(dv_cols, function(dv) {
+    dat <- prepare_lm_data(df, dv, predictor_col, predictor_baseline_col)
+    dv_rest2_col <- paste0(sub("^delta_", "", dv), "_rest2")
+    if (nrow(dat) < 20) {
+      return(extract_vif_table(NULL, dv, predictor_col, outcome_family))
+    }
+
+    predictor_baseline_part <- if (!is.null(predictor_baseline_col)) paste0(" + ", predictor_baseline_col) else ""
+    lm_proxy <- tryCatch(
+      stats::lm(as.formula(paste0(dv, " ~ Group * ", predictor_col, " + ", dv_rest2_col, predictor_baseline_part, " + log_mean_MFD_scaled")), data = dat),
+      error = function(e) NULL
+    )
+    vif_obj <- tryCatch(car::vif(lm_proxy, type = "predictor"), error = function(e) NULL)
+    extract_vif_table(vif_obj, dv, predictor_col, outcome_family)
+  })
+}
+
+extract_lm_influence_summary <- function(models, predictor_label, outcome_family, analysis_label) {
+  map_df(names(models), function(nm) {
+    mod <- models[[nm]]
+
+    if (is.null(mod)) {
+      return(tibble(
+        DV = nm,
+        predictor = predictor_label,
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        n = NA_integer_,
+        max_cooks_d = NA_real_,
+        mean_cooks_d = NA_real_,
+        n_cooks_gt_4_over_n = NA_integer_,
+        max_hat = NA_real_,
+        max_abs_rstudent = NA_real_
+      ))
+    }
+
+    infl <- tryCatch(influence.measures(mod), error = function(e) NULL)
+    if (is.null(infl)) {
+      return(tibble(
+        DV = nm,
+        predictor = predictor_label,
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        n = stats::nobs(mod),
+        max_cooks_d = NA_real_,
+        mean_cooks_d = NA_real_,
+        n_cooks_gt_4_over_n = NA_integer_,
+        max_hat = NA_real_,
+        max_abs_rstudent = NA_real_
+      ))
+    }
+
+    infmat <- infl$infmat
+    cooks_vals <- if ("cook.d" %in% colnames(infmat)) infmat[, "cook.d"] else rep(NA_real_, nrow(infmat))
+    hat_vals <- if ("hat" %in% colnames(infmat)) infmat[, "hat"] else rep(NA_real_, nrow(infmat))
+    rstudent_vals <- tryCatch(rstudent(mod), error = function(e) rep(NA_real_, stats::nobs(mod)))
+
+    tibble(
+      DV = nm,
+      predictor = predictor_label,
+      outcome_family = outcome_family,
+      analysis = analysis_label,
+      n = stats::nobs(mod),
+      max_cooks_d = suppressWarnings(max(cooks_vals, na.rm = TRUE)),
+      mean_cooks_d = suppressWarnings(mean(cooks_vals, na.rm = TRUE)),
+      n_cooks_gt_4_over_n = sum(cooks_vals > (4 / stats::nobs(mod)), na.rm = TRUE),
+      max_hat = suppressWarnings(max(hat_vals, na.rm = TRUE)),
+      max_abs_rstudent = suppressWarnings(max(abs(rstudent_vals), na.rm = TRUE))
+    ) %>%
+      mutate(across(c(max_cooks_d, mean_cooks_d, max_hat, max_abs_rstudent), ~ ifelse(is.infinite(.x), NA_real_, .x)))
+  })
+}
+
+track_lm_participants <- function(df, dv_cols, predictor_col, predictor_baseline_col = NULL, outcome_family, analysis_label) {
+  map_df(dv_cols, function(dv) {
+    dv_rest2_col <- paste0(sub("^delta_", "", dv), "_rest2")
+    cols <- c("NECOS_ID", "Group", "log_mean_MFD_scaled", predictor_col, dv, dv_rest2_col)
+    if (!is.null(predictor_baseline_col)) cols <- c(cols, predictor_baseline_col)
+
+    dat <- df %>%
+      select(any_of(cols)) %>%
+      mutate(
+        dv_missing = is.na(.data[[dv]]),
+        dv_baseline_missing = is.na(.data[[dv_rest2_col]]),
+        pred_missing = is.na(.data[[predictor_col]]),
+        predictor_baseline_missing = if (is.null(predictor_baseline_col)) FALSE else is.na(.data[[predictor_baseline_col]]),
+        motion_missing = is.na(log_mean_MFD_scaled),
+        group_missing = is.na(Group),
+        included = !(dv_missing | dv_baseline_missing | pred_missing | predictor_baseline_missing | motion_missing | group_missing),
+        exclusion_reason = case_when(
+          included ~ "included",
+          dv_missing ~ paste0("missing DV: ", dv),
+          dv_baseline_missing ~ paste0("missing DV baseline: ", dv_rest2_col),
+          pred_missing ~ paste0("missing predictor: ", predictor_col),
+          predictor_baseline_missing ~ paste0("missing predictor baseline: ", predictor_baseline_col),
+          motion_missing ~ "missing motion covariate: log_mean_MFD_scaled",
+          group_missing ~ "missing group",
+          TRUE ~ "other"
+        )
+      )
+
+    dat %>%
+      transmute(
+        NECOS_ID,
+        DV = dv,
+        predictor = predictor_col,
+        baseline = ifelse(is.null(predictor_baseline_col), NA_character_, predictor_baseline_col),
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        included,
+        exclusion_reason
+      )
+  })
+}
+
+save_model_diagnostic_plots <- function(models, model_family, file_stub) {
+  walk(names(models), function(nm) {
+    mod <- models[[nm]]
+    if (is.null(mod)) return(NULL)
+
+    diag_df <- tibble(
+      fitted = fitted(mod),
+      residuals = resid(mod)
+    ) %>%
+      filter(is.finite(fitted), is.finite(residuals))
+
+    if (nrow(diag_df) == 0) return(NULL)
+
+    qq_plot <- ggplot(diag_df, aes(sample = residuals)) +
+      stat_qq() +
+      stat_qq_line() +
+      theme_bw() +
+      labs(
+        title = paste(model_family, nm, "residual QQ plot"),
+        x = "Theoretical quantiles",
+        y = "Sample quantiles"
+      )
+
+    resid_plot <- ggplot(diag_df, aes(x = fitted, y = residuals)) +
+      geom_point() +
+      geom_hline(yintercept = 0, linetype = "dashed") +
+      theme_bw() +
+      labs(
+        title = paste(model_family, nm, "residuals vs fitted"),
+        x = "Fitted values",
+        y = "Residuals"
+      )
+
+    base_name <- paste0(sanitize_stub(file_stub), "_", sanitize_stub(nm))
+
+    ggsave(file.path(diag_qq_dir, paste0(base_name, "_qq.png")), qq_plot, width = 6, height = 5)
+    ggsave(file.path(diag_resid_dir, paste0(base_name, "_resid_fitted.png")), resid_plot, width = 6, height = 5)
+  })
+}
+
+run_delta_lm_screen <- function(data, delta_dv_cols, predictor_delta_col, predictor_baseline_col = NULL, outcome_family, file_stub, analysis_label, sensitivity_exclude_ids = character(0)) {
+  if (is.null(data) || nrow(data) == 0 || !(predictor_delta_col %in% names(data)) || any(!delta_dv_cols %in% names(data)) || (!is.null(predictor_baseline_col) && !(predictor_baseline_col %in% names(data)))) {
+    message("Skipping ", analysis_label, " / ", predictor_delta_col, " because required data are not available.")
+    return(list(models = set_names(vector("list", length(delta_dv_cols)), delta_dv_cols),
+                results = tibble(), complete_cases = tibble(), vif = tibble(), tracking = tibble(),
+                influence = tibble(), sensitivity_results = tibble()))
+  }
+
+  complete_cases <- map_df(delta_dv_cols, ~ count_complete_cases_lm(data, .x, predictor_delta_col, predictor_baseline_col))
+  tracking <- track_lm_participants(data, delta_dv_cols, predictor_delta_col, predictor_baseline_col, outcome_family, analysis_label)
+
+  fit_obj <- fit_lm_delta_set(data, delta_dv_cols, predictor_delta_col, predictor_baseline_col)
+  models <- fit_obj$models
+  fit_errors <- fit_obj$errors
+
+  results <- extract_lm_term(
+    models = models,
+    fit_errors = fit_errors,
+    term_label_model = paste0("Group:", predictor_delta_col),
+    term_label_report = paste0("Group:", predictor_delta_col),
+    predictor_label = predictor_delta_col,
+    baseline_label = predictor_baseline_col,
+    outcome_family = outcome_family,
+    analysis_label = analysis_label,
+    file_stub = file_stub
+   ) %>%
+    left_join(complete_cases, by = c("DV", "predictor", "baseline")) %>%
+    arrange(p)
+
+  vif_table <- extract_lm_vif(data, delta_dv_cols, predictor_delta_col, predictor_baseline_col, outcome_family)
+  influence_table <- extract_lm_influence_summary(models, predictor_delta_col, outcome_family, analysis_label)
+
+  sensitivity_results <- tibble()
+  if (length(sensitivity_exclude_ids) > 0) {
+    sens_fit <- fit_lm_delta_set(data %>% filter(!NECOS_ID %in% sensitivity_exclude_ids), delta_dv_cols, predictor_delta_col, predictor_baseline_col)
+    sensitivity_results <- extract_lm_term(
+      models = sens_fit$models,
+      fit_errors = sens_fit$errors,
+      term_label_model = paste0("Group:", predictor_delta_col),
+      term_label_report = paste0("Group:", predictor_delta_col),
+      predictor_label = predictor_delta_col,
+      baseline_label = predictor_baseline_col,
+      outcome_family = outcome_family,
+      analysis_label = paste0(analysis_label, "_sensitivity"),
+      file_stub = paste0(file_stub, "_sensitivity")
+     ) %>%
+      mutate(sensitivity_exclusion = paste(sensitivity_exclude_ids, collapse = ","))
+
+    sens_path <- file.path(models_dir, paste0(file_stub, "_", predictor_delta_col, "_sensitivity_results.csv"))
+    readr::write_csv(sensitivity_results, sens_path)
+    write_output_metadata(
+      sens_path,
+      description = paste("Sensitivity results for", outcome_family, "excluding influential participants for predictor", predictor_delta_col),
+      columns = list(
+        DV = "Dependent variable.",
+        predictor = "Predictor used in the model.",
+        sensitivity_exclusion = "Comma-separated IDs excluded in the sensitivity analysis.",
+        p = "Uncorrected p-value for the interaction term."
+      )
+    )
+  }
+
+  results_path <- file.path(models_dir, paste0(file_stub, "_", predictor_delta_col, "_results.csv"))
+  complete_path <- file.path(models_dir, paste0(file_stub, "_", predictor_delta_col, "_complete_cases.csv"))
+  vif_path <- file.path(models_dir, paste0(file_stub, "_", predictor_delta_col, "_vif.csv"))
+  tracking_path <- file.path(models_dir, paste0(file_stub, "_", predictor_delta_col, "_participant_tracking.csv"))
+  influence_path <- file.path(models_dir, paste0(file_stub, "_", predictor_delta_col, "_influence.csv"))
+
+  readr::write_csv(results, results_path)
+  readr::write_csv(complete_cases, complete_path)
+  readr::write_csv(vif_table, vif_path)
+  readr::write_csv(tracking, tracking_path)
+  readr::write_csv(influence_table, influence_path)
+
+  write_output_metadata(
+    results_path,
+    description = paste("Model-level baseline-adjusted delta ANCOVA results for", outcome_family, "using predictor", predictor_delta_col),
+    columns = list(
+      DV = "Dependent variable.",
+      term = "Statistical test label.",
+      predictor = "Predictor used in the model.",
+      n = "Number of participants used in the fitted model.",
+      baseline = "Baseline physiological covariate included in the model, if any.",
+      p = "Uncorrected p-value for the Group by predictor interaction term in the baseline-adjusted delta ANCOVA."
+    )
+  )
+  write_output_metadata(
+    complete_path,
+    description = paste("Complete-case counts for", outcome_family, "using predictor", predictor_delta_col),
+    columns = list(
+      DV = "Dependent variable.",
+      predictor = "Predictor used in the model.",
+      n_complete_rows = "Number of complete rows available.",
+      n_complete_ids = "Number of unique participants with complete data."
+    )
+  )
+  write_output_metadata(
+    vif_path,
+    description = paste("Variance inflation factors for", outcome_family, "using predictor", predictor_delta_col),
+    columns = list(
+      DV = "Dependent variable.",
+      term = "Model term.",
+      vif = "VIF or GVIF.",
+      gvif_adj = "Adjusted GVIF when applicable.",
+      baseline_vif_note = "The baseline DV term may show elevated collinearity because the delta outcome is defined relative to the same rest2 measurement; interpret this in context rather than as a standalone model failure."
+    )
+  )
+  write_output_metadata(
+    tracking_path,
+    description = paste("Participant inclusion tracking for", outcome_family, "using predictor", predictor_delta_col),
+    columns = list(
+      NECOS_ID = "Participant ID.",
+      included = "Whether the participant contributed to the final model.",
+      exclusion_reason = "Reason for exclusion if not included."
+    )
+  )
+  write_output_metadata(
+    influence_path,
+    description = paste("Influence diagnostics for", outcome_family, "using predictor", predictor_delta_col, ". These summaries are descriptive only and were not used to define the pre-specified sensitivity exclusions."),
+    columns = list(
+      DV = "Dependent variable.",
+      predictor = "Predictor used in the model.",
+      n = "Number of observations used in the fitted model.",
+      max_cooks_d = "Maximum Cook's distance across observations.",
+      mean_cooks_d = "Mean Cook's distance across observations.",
+      n_cooks_gt_4_over_n = "Count of observations with Cook's distance greater than 4/n.",
+      max_hat = "Maximum leverage (hat) value.",
+      max_abs_rstudent = "Maximum absolute studentized residual."
+    )
+  )
+
+  save_model_diagnostic_plots(models, outcome_family, paste0(file_stub, "_", predictor_delta_col))
+
+  list(models = models, results = results, complete_cases = complete_cases, vif = vif_table, tracking = tracking, influence = influence_table, sensitivity_results = sensitivity_results)
+}
+
+ecc_lm_hr <- run_delta_lm_screen(ecc_delta_hr, ecc_delta_dv_cols, "HR_delta", outcome_family = "eccentricity_delta_lm", file_stub = "eccentricity_delta_lm", analysis_label = "ecc_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["HR_delta"]])
+ecc_lm_hrv <- run_delta_lm_screen(ecc_delta_hrv, ecc_delta_dv_cols, "HRV_delta", outcome_family = "eccentricity_delta_lm", file_stub = "eccentricity_delta_lm", analysis_label = "ecc_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["HRV_delta"]])
+ecc_lm_saliva <- run_delta_lm_screen(ecc_delta_saliva, ecc_delta_dv_cols, "SaCort_delta", outcome_family = "eccentricity_delta_lm", file_stub = "eccentricity_delta_lm", analysis_label = "ecc_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["SaCort_delta"]])
+ecc_lm_acth <- run_delta_lm_screen(ecc_delta_acth, ecc_delta_dv_cols, "asinh_ACTH_delta", outcome_family = "eccentricity_delta_lm", file_stub = "eccentricity_delta_lm", analysis_label = "ecc_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["asinh_ACTH_delta"]])
+ecc_lm_stai <- run_delta_lm_screen(ecc_delta_stai, ecc_delta_dv_cols, "STAI_delta", outcome_family = "eccentricity_delta_lm", file_stub = "eccentricity_delta_lm", analysis_label = "ecc_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["STAI_delta"]])
+ecc_lm_vas <- run_delta_lm_screen(ecc_delta_vas, ecc_delta_dv_cols, "VAS_delta", outcome_family = "eccentricity_delta_lm", file_stub = "eccentricity_delta_lm", analysis_label = "ecc_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["VAS_delta"]])
+```
+
+## Collect eccentricity delta ANCOVA outputs
+
+```{r}
+ecc_lm_results_all <- bind_rows(
+  ecc_lm_hr$results, ecc_lm_hrv$results, ecc_lm_saliva$results,
+  ecc_lm_acth$results, ecc_lm_stai$results, ecc_lm_vas$results
+)
+
+ecc_lm_sensitivity_all <- bind_rows(
+  ecc_lm_hr$sensitivity_results, ecc_lm_hrv$sensitivity_results, ecc_lm_saliva$sensitivity_results,
+  ecc_lm_acth$sensitivity_results, ecc_lm_stai$sensitivity_results, ecc_lm_vas$sensitivity_results
+)
+
+ecc_lm_tracking_all <- bind_rows(
+  ecc_lm_hr$tracking, ecc_lm_hrv$tracking, ecc_lm_saliva$tracking,
+  ecc_lm_acth$tracking, ecc_lm_stai$tracking, ecc_lm_vas$tracking
+)
+
+readr::write_csv(ecc_lm_results_all, file.path(models_dir, "peripheral_eccentricity_delta_lm_results.csv"))
+readr::write_csv(ecc_lm_tracking_all, file.path(models_dir, "peripheral_eccentricity_delta_lm_participant_tracking.csv"))
+if (nrow(ecc_lm_sensitivity_all) > 0) {
+  readr::write_csv(ecc_lm_sensitivity_all, file.path(models_dir, "peripheral_eccentricity_delta_lm_sensitivity_results.csv"))
+}
+```
+
+## Prepare dispersion delta analysis datasets
+
+```{r}
+disp_delta_hr <- disp_delta_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HR_delta), by = "NECOS_ID")
+disp_delta_hrv <- disp_delta_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HRV_delta), by = "NECOS_ID")
+disp_delta_saliva <- disp_delta_base %>%
+  left_join(select(endo_delta, NECOS_ID, SaCort_delta), by = "NECOS_ID") %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+disp_delta_acth <- disp_delta_base %>%
+  left_join(select(endo_delta, NECOS_ID, asinh_ACTH_delta), by = "NECOS_ID") %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+disp_delta_stai <- disp_delta_base %>%
+  left_join(select(stai_delta, NECOS_ID, STAI_delta), by = "NECOS_ID")
+disp_delta_vas <- disp_delta_base %>%
+  left_join(select(vas_delta, NECOS_ID, VAS_delta), by = "NECOS_ID")
+
+disp_delta_dv_cols <- paste0("delta_", disp_dv_cols)
+```
+
+## Run dispersion delta ANCOVAs
+
+```{r}
+disp_lm_hr <- run_delta_lm_screen(disp_delta_hr, disp_delta_dv_cols, "HR_delta", outcome_family = "dispersion_delta_lm", file_stub = "dispersion_delta_lm", analysis_label = "disp_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["HR_delta"]])
+disp_lm_hrv <- run_delta_lm_screen(disp_delta_hrv, disp_delta_dv_cols, "HRV_delta", outcome_family = "dispersion_delta_lm", file_stub = "dispersion_delta_lm", analysis_label = "disp_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["HRV_delta"]])
+disp_lm_saliva <- run_delta_lm_screen(disp_delta_saliva, disp_delta_dv_cols, "SaCort_delta", outcome_family = "dispersion_delta_lm", file_stub = "dispersion_delta_lm", analysis_label = "disp_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["SaCort_delta"]])
+disp_lm_acth <- run_delta_lm_screen(disp_delta_acth, disp_delta_dv_cols, "asinh_ACTH_delta", outcome_family = "dispersion_delta_lm", file_stub = "dispersion_delta_lm", analysis_label = "disp_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["asinh_ACTH_delta"]])
+disp_lm_stai <- run_delta_lm_screen(disp_delta_stai, disp_delta_dv_cols, "STAI_delta", outcome_family = "dispersion_delta_lm", file_stub = "dispersion_delta_lm", analysis_label = "disp_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["STAI_delta"]])
+disp_lm_vas <- run_delta_lm_screen(disp_delta_vas, disp_delta_dv_cols, "VAS_delta", outcome_family = "dispersion_delta_lm", file_stub = "dispersion_delta_lm", analysis_label = "disp_delta_lm", sensitivity_exclude_ids = delta_sensitivity_exclude[["VAS_delta"]])
+```
+
+## Collect dispersion delta ANCOVA outputs
+
+```{r}
+disp_lm_results_all <- bind_rows(
+  disp_lm_hr$results, disp_lm_hrv$results, disp_lm_saliva$results,
+  disp_lm_acth$results, disp_lm_stai$results, disp_lm_vas$results
+)
+
+disp_lm_sensitivity_all <- bind_rows(
+  disp_lm_hr$sensitivity_results, disp_lm_hrv$sensitivity_results, disp_lm_saliva$sensitivity_results,
+  disp_lm_acth$sensitivity_results, disp_lm_stai$sensitivity_results, disp_lm_vas$sensitivity_results
+)
+
+disp_lm_tracking_all <- bind_rows(
+  disp_lm_hr$tracking, disp_lm_hrv$tracking, disp_lm_saliva$tracking,
+  disp_lm_acth$tracking, disp_lm_stai$tracking, disp_lm_vas$tracking
+)
+
+readr::write_csv(disp_lm_results_all, file.path(models_dir, "peripheral_dispersion_delta_lm_results.csv"))
+readr::write_csv(disp_lm_tracking_all, file.path(models_dir, "peripheral_dispersion_delta_lm_participant_tracking.csv"))
+if (nrow(disp_lm_sensitivity_all) > 0) {
+  readr::write_csv(disp_lm_sensitivity_all, file.path(models_dir, "peripheral_dispersion_delta_lm_sensitivity_results.csv"))
+}
+```
+
+# SUPPLEMENTARY RANDOM-INTERCEPT LMM SENSITIVITY ANALYSES
+
+## Prepare eccentricity LMM input datasets
+
+```{r}
+ecc_hr_data <- eccentricity_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HR_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_hr_hrv_long, NECOS_ID, scan, log_HR), by = c("NECOS_ID", "scan"))
+
+ecc_hrv_data <- eccentricity_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HRV_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_hr_hrv_long, NECOS_ID, scan, sqrt_HRV), by = c("NECOS_ID", "scan"))
+
+ecc_saliva_data <- eccentricity_base %>%
+  left_join(select(endo_delta, NECOS_ID, SaCort_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_endo_long, NECOS_ID, scan, log_saliva_cortisol), by = c("NECOS_ID", "scan")) %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+
+ecc_acth_data <- eccentricity_base %>%
+  left_join(select(endo_delta, NECOS_ID, asinh_ACTH_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_endo_long, NECOS_ID, scan, log_ACTH), by = c("NECOS_ID", "scan")) %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+
+ecc_stai_data <- eccentricity_base %>%
+  left_join(select(stai_delta, NECOS_ID, STAI_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_stai_long, NECOS_ID, scan, STAI), by = c("NECOS_ID", "scan"))
+
+ecc_vas_data <- eccentricity_base %>%
+  left_join(select(vas_delta, NECOS_ID, VAS_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_vas_long, NECOS_ID, scan, sqrt_VAS), by = c("NECOS_ID", "scan"))
+```
+
+## Prepare dispersion LMM input datasets
+
+```{r}
+disp_hr_data <- dispersion_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HR_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_hr_hrv_long, NECOS_ID, scan, log_HR), by = c("NECOS_ID", "scan"))
+
+disp_hrv_data <- dispersion_base %>%
+  left_join(select(physio_hr_hrv_delta, NECOS_ID, HRV_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_hr_hrv_long, NECOS_ID, scan, sqrt_HRV), by = c("NECOS_ID", "scan"))
+
+disp_saliva_data <- dispersion_base %>%
+  left_join(select(endo_delta, NECOS_ID, SaCort_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_endo_long, NECOS_ID, scan, log_saliva_cortisol), by = c("NECOS_ID", "scan")) %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+
+disp_acth_data <- dispersion_base %>%
+  left_join(select(endo_delta, NECOS_ID, asinh_ACTH_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_endo_long, NECOS_ID, scan, log_ACTH), by = c("NECOS_ID", "scan")) %>%
+  filter(!NECOS_ID %in% id_exclude_endo)
+
+disp_stai_data <- dispersion_base %>%
+  left_join(select(stai_delta, NECOS_ID, STAI_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_stai_long, NECOS_ID, scan, STAI), by = c("NECOS_ID", "scan"))
+
+disp_vas_data <- dispersion_base %>%
+  left_join(select(vas_delta, NECOS_ID, VAS_delta), by = "NECOS_ID") %>%
+  left_join(select(physio_vas_long, NECOS_ID, scan, sqrt_VAS), by = c("NECOS_ID", "scan"))
+```
+
+## Run optional random-intercept sensitivity LMMs
+
+```{r}
+count_complete_cases_lmm <- function(df, dv, predictor_col, baseline_col = NULL) {
+  cols <- c("NECOS_ID", "Group", "scan", "log_MFD_scaled", predictor_col, dv)
+  if (!is.null(baseline_col)) cols <- c(cols, baseline_col)
+
+  dat <- df %>%
+    select(any_of(cols)) %>%
+    tidyr::drop_na() %>%
+    group_by(NECOS_ID) %>%
+    filter(n_distinct(scan) == 2) %>%
+    ungroup()
+
+  tibble(
+    DV = dv,
+    predictor = predictor_col,
+    n_complete_rows = nrow(dat),
+    n_complete_ids = dplyr::n_distinct(dat$NECOS_ID)
+  )
+}
+
+prepare_lmm_data <- function(df, dv, predictor_col, baseline_col = NULL) {
+  cols <- c("NECOS_ID", "Group", "scan", "log_MFD_scaled", predictor_col, dv)
+  if (!is.null(baseline_col)) cols <- c(cols, baseline_col)
+
+  df %>%
+    select(any_of(cols)) %>%
+    tidyr::drop_na() %>%
+    group_by(NECOS_ID) %>%
+    filter(n_distinct(scan) == 2) %>%
+    ungroup() %>%
+    mutate(
+      Group = droplevels(Group),
+      scan = droplevels(factor(scan, levels = c("rest2", "rest3")))
+    )
+}
+
+get_lmm_convergence_message <- function(mod, fit_error = NA_character_) {
+  if (is.null(mod)) return(fit_error)
+  msgs <- mod@optinfo$conv$lme4$messages
+  if (is.null(msgs)) "OK" else paste(msgs, collapse = " | ")
+}
+
+extract_lmm_r2 <- function(mod) {
+  if (is.null(mod) || !requireNamespace("MuMIn", quietly = TRUE)) {
+    return(list(r2_marginal = NA_real_, r2_conditional = NA_real_))
+  }
+
+  r2_obj <- tryCatch(MuMIn::r.squaredGLMM(mod), error = function(e) NULL)
+  if (is.null(r2_obj)) {
+    return(list(r2_marginal = NA_real_, r2_conditional = NA_real_))
+  }
+
+  list(
+    r2_marginal = as.numeric(r2_obj[1, 1]),
+    r2_conditional = as.numeric(r2_obj[1, 2])
+  )
+}
+
+extract_lmm_interaction_stats <- function(mod, predictor_col, require_scan = FALSE) {
+  empty_out <- list(
+    interaction_term = NA_character_,
+    interaction_estimate = NA_real_,
+    interaction_statistic = NA_real_,
+    p_interaction_term = NA_real_
+  )
+
+  if (is.null(mod)) {
+    return(empty_out)
+  }
+
+  tidy_fixef <- tryCatch(broom.mixed::tidy(mod, effects = "fixed"), error = function(e) NULL)
+  if (is.null(tidy_fixef) || !("term" %in% names(tidy_fixef))) {
+    return(empty_out)
+  }
+
+  has_target_interaction <- function(term, predictor_col, require_scan = FALSE) {
+    comps <- unlist(strsplit(gsub("`", "", term), ":", fixed = TRUE))
+    has_group <- any(grepl("^Group(\\d+)?$", comps))
+    has_predictor <- predictor_col %in% comps
+    has_scan <- any(grepl("^scan(\\d+)?$", comps))
+    if (require_scan) {
+      has_group && has_predictor && has_scan
+    } else {
+      has_group && has_predictor
+    }
+  }
+
+  candidates <- tidy_fixef %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(.keep_term = has_target_interaction(term, predictor_col, require_scan = require_scan)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(.keep_term) %>%
+    dplyr::mutate(interaction_order = stringr::str_count(term, stringr::fixed(":"))) %>%
+    dplyr::arrange(dplyr::desc(interaction_order))
+
+  if (nrow(candidates) == 0) {
+    return(empty_out)
+  }
+
+  best <- candidates[1, ]
+
+  list(
+    interaction_term = best$term[[1]],
+    interaction_estimate = if ("estimate" %in% names(best)) as.numeric(best$estimate[[1]]) else NA_real_,
+    interaction_statistic = if ("statistic" %in% names(best)) as.numeric(best$statistic[[1]]) else NA_real_,
+    p_interaction_term = if ("p.value" %in% names(best)) as.numeric(best$p.value[[1]]) else NA_real_
+  )
+}
+
+fit_lmm_pair <- function(df, dv, predictor_col, baseline_col = NULL,
+                         random_effect = "(1 | NECOS_ID)",
+                         fixed_effect_spec = c("two_way", "three_way")) {
+  fixed_effect_spec <- match.arg(fixed_effect_spec)
+  dat <- prepare_lmm_data(df, dv, predictor_col, baseline_col)
+
+  if (nrow(dat) < 10 || dplyr::n_distinct(dat$NECOS_ID) < 5) {
+    return(list(full = NULL, null = NULL, data = dat, full_error = "Insufficient balanced data for LMM", null_error = "Insufficient balanced data for LMM"))
+  }
+
+  base_part <- if (!is.null(baseline_col)) paste0(" + ", baseline_col) else ""
+
+  if (fixed_effect_spec == "three_way") {
+    full_f <- as.formula(paste0(dv, " ~ Group * scan * ", predictor_col, base_part, " + log_MFD_scaled + ", random_effect))
+    null_f <- as.formula(paste0(dv, " ~ Group + scan + ", predictor_col, " + Group:scan + Group:", predictor_col, " + scan:", predictor_col, base_part, " + log_MFD_scaled + ", random_effect))
+  } else {
+    full_f <- as.formula(paste0(dv, " ~ Group * ", predictor_col, " + scan", base_part, " + log_MFD_scaled + ", random_effect))
+    null_f <- as.formula(paste0(dv, " ~ Group + ", predictor_col, " + scan", base_part, " + log_MFD_scaled + ", random_effect))
+  }
+
+  ctrl <- lme4::lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+
+  full_fit <- purrr::safely(function() lmerTest::lmer(full_f, data = dat, REML = FALSE, control = ctrl), otherwise = NULL)()
+  null_fit <- purrr::safely(function() lmerTest::lmer(null_f, data = dat, REML = FALSE, control = ctrl), otherwise = NULL)()
+
+  list(
+    full = full_fit$result,
+    null = null_fit$result,
+    data = dat,
+    full_error = if (is.null(full_fit$error)) NA_character_ else conditionMessage(full_fit$error),
+    null_error = if (is.null(null_fit$error)) NA_character_ else conditionMessage(null_fit$error)
+  )
+}
+
+fit_lmm_pairs <- function(df, dv_cols, predictor_col, baseline_col = NULL,
+                          random_effect = "(1 | NECOS_ID)",
+                          fixed_effect_spec = c("two_way", "three_way")) {
+  fixed_effect_spec <- match.arg(fixed_effect_spec)
+  pairs <- map(dv_cols, ~ fit_lmm_pair(df, .x, predictor_col, baseline_col, random_effect = random_effect, fixed_effect_spec = fixed_effect_spec))
+  names(pairs) <- dv_cols
+  pairs
+}
+
+extract_lmm_term <- function(pairs, predictor_col, baseline_col, outcome_family, analysis_label, file_stub, fixed_effect_spec = c("two_way", "three_way")) {
+  fixed_effect_spec <- match.arg(fixed_effect_spec)
+  map_df(names(pairs), function(nm) {
+    pair <- pairs[[nm]]
+    full <- pair$full
+    null <- pair$null
+    dat <- pair$data
+
+    if (is.null(full) || is.null(null)) {
+      return(tibble(
+        DV = nm,
+        term = paste0("LRT_full_vs_null_", predictor_col),
+        predictor = predictor_col,
+        baseline = ifelse(is.null(baseline_col), NA_character_, baseline_col),
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        model_bundle = paste0(file_stub, "__", predictor_col),
+        n = if (!is.null(dat)) nrow(dat) else NA_integer_,
+        singular = NA,
+        convergence = paste(na.omit(unique(c(pair$full_error, pair$null_error))), collapse = " | "),
+        test = "likelihood_ratio_test",
+        chisq = NA_real_,
+        df_diff = NA_real_,
+        eta2_partial = NA_real_,
+        r2_marginal = NA_real_,
+        r2_conditional = NA_real_,
+        interaction_term = NA_character_,
+        interaction_estimate = NA_real_,
+        interaction_statistic = NA_real_,
+        p_interaction_term = NA_real_,
+        p = NA_real_
+      ))
+    }
+
+    lrt <- tryCatch(anova(null, full), error = function(e) NULL)
+    p_lrt <- if (!is.null(lrt) && "Pr(>Chisq)" %in% names(lrt)) as.numeric(lrt$`Pr(>Chisq)`[2]) else NA_real_
+    chisq <- if (!is.null(lrt) && "Chisq" %in% names(lrt)) as.numeric(lrt$Chisq[2]) else NA_real_
+    df_diff <- if (!is.null(lrt) && "Chi Df" %in% names(lrt)) as.numeric(lrt$`Chi Df`[2]) else if (!is.null(lrt) && "Df" %in% names(lrt)) as.numeric(diff(lrt$Df))[1] else NA_real_
+
+    r2_out <- extract_lmm_r2(full)
+    interaction_out <- extract_lmm_interaction_stats(full, predictor_col, require_scan = fixed_effect_spec == "three_way")
+
+    tibble(
+      DV = nm,
+      term = paste0("LRT_full_vs_null_", predictor_col),
+      predictor = predictor_col,
+      baseline = ifelse(is.null(baseline_col), NA_character_, baseline_col),
+      outcome_family = outcome_family,
+      analysis = analysis_label,
+      model_bundle = paste0(file_stub, "__", predictor_col),
+      n = stats::nobs(full),
+      singular = lme4::isSingular(full, tol = 1e-4),
+      convergence = get_lmm_convergence_message(full, pair$full_error),
+      test = "likelihood_ratio_test",
+      chisq = chisq,
+      df_diff = df_diff,
+      eta2_partial = NA_real_,
+      r2_marginal = r2_out$r2_marginal,
+      r2_conditional = r2_out$r2_conditional,
+      interaction_term = interaction_out$interaction_term,
+      interaction_estimate = interaction_out$interaction_estimate,
+      interaction_statistic = interaction_out$interaction_statistic,
+      p_interaction_term = interaction_out$p_interaction_term,
+      p = p_lrt
+    )
+  })
+}
+
+extract_lmm_vif <- function(df, dv_cols, predictor_col, baseline_col, outcome_family) {
+  map_df(dv_cols, function(dv) {
+    dat <- prepare_lmm_data(df, dv, predictor_col, baseline_col)
+    if (nrow(dat) < 10 || dplyr::n_distinct(dat$NECOS_ID) < 5) {
+      return(extract_vif_table(NULL, dv, predictor_col, outcome_family))
+    }
+
+    base_part <- if (!is.null(baseline_col)) paste0(" + ", baseline_col) else ""
+    lm_proxy <- tryCatch(
+      stats::lm(as.formula(paste0(dv, " ~ Group * ", predictor_col, " + scan", base_part, " + log_MFD_scaled")), data = dat),
+      error = function(e) NULL
+    )
+    vif_obj <- tryCatch(car::vif(lm_proxy, type = "predictor"), error = function(e) NULL)
+    extract_vif_table(vif_obj, dv, predictor_col, outcome_family)
+  })
+}
+
+track_lmm_participants <- function(df, dv_cols, predictor_col, baseline_col = NULL, outcome_family, analysis_label) {
+  map_df(dv_cols, function(dv) {
+    cols <- c("NECOS_ID", "Group", "scan", "log_MFD_scaled", predictor_col, dv)
+    if (!is.null(baseline_col)) cols <- c(cols, baseline_col)
+
+    dat <- df %>% select(any_of(cols))
+
+    dat <- dat %>%
+      mutate(
+        dv_missing = is.na(.data[[dv]]),
+        pred_missing = is.na(.data[[predictor_col]]),
+        motion_missing = is.na(log_MFD_scaled),
+        baseline_missing = if (is.null(baseline_col)) FALSE else is.na(.data[[baseline_col]]),
+        group_missing = is.na(Group),
+        scan_missing = is.na(scan),
+        row_complete = !(dv_missing | pred_missing | motion_missing | baseline_missing | group_missing | scan_missing),
+        row_exclusion_reason = case_when(
+          row_complete ~ "included",
+          dv_missing ~ paste0("missing DV: ", dv),
+          pred_missing ~ paste0("missing predictor: ", predictor_col),
+          baseline_missing ~ paste0("missing baseline: ", baseline_col),
+          motion_missing ~ "missing motion covariate: log_MFD_scaled",
+          group_missing ~ "missing group",
+          scan_missing ~ "missing scan",
+          TRUE ~ "other"
+        )
+      )
+
+    dat %>%
+      group_by(NECOS_ID) %>%
+      summarise(
+        DV = dv,
+        predictor = predictor_col,
+        baseline = ifelse(is.null(baseline_col), NA_character_, baseline_col),
+        outcome_family = outcome_family,
+        analysis = analysis_label,
+        n_rows_total = n(),
+        n_rows_complete = sum(row_complete),
+        n_complete_scans = n_distinct(scan[row_complete]),
+        complete_scans = paste(sort(unique(as.character(scan[row_complete]))), collapse = ","),
+        included = n_complete_scans == 2,
+        exclusion_reason = case_when(
+          included ~ "included",
+          n_rows_complete == 0 ~ paste(sort(unique(row_exclusion_reason[!row_complete])), collapse = "; "),
+          n_complete_scans < 2 ~ "not complete at both scans",
+          TRUE ~ "other"
+        ),
+        .groups = "drop"
+      )
+  })
+}
+
+run_lmm_screen <- function(data, dv_cols, predictor_col, baseline_col = NULL, outcome_family, file_stub, analysis_label,
+                           random_effect = "(1 | NECOS_ID)", fixed_effect_spec = c("two_way", "three_way")) {
+  fixed_effect_spec <- match.arg(fixed_effect_spec)
+  if (is.null(data) || nrow(data) == 0 || !(predictor_col %in% names(data)) || any(!dv_cols %in% names(data)) || (!is.null(baseline_col) && !(baseline_col %in% names(data)))) {
+    message("Skipping ", analysis_label, " / ", predictor_col, " because required data are not available.")
+    return(list(models = set_names(vector("list", length(dv_cols)), dv_cols),
+                pairs = set_names(vector("list", length(dv_cols)), dv_cols),
+                results = tibble(), complete_cases = tibble(), vif = tibble(), tracking = tibble()))
+  }
+
+  complete_cases <- map_df(dv_cols, ~ count_complete_cases_lmm(data, .x, predictor_col, baseline_col))
+  tracking <- track_lmm_participants(data, dv_cols, predictor_col, baseline_col, outcome_family, analysis_label)
+
+  pairs <- fit_lmm_pairs(data, dv_cols, predictor_col, baseline_col, random_effect = random_effect, fixed_effect_spec = fixed_effect_spec)
+  full_models <- map(pairs, "full")
+  names(full_models) <- dv_cols
+
+  results <- extract_lmm_term(
+    pairs = pairs,
+    predictor_col = predictor_col,
+    baseline_col = baseline_col,
+    outcome_family = outcome_family,
+    analysis_label = analysis_label,
+    file_stub = file_stub,
+    fixed_effect_spec = fixed_effect_spec
+  ) %>%
+    left_join(complete_cases, by = c("DV", "predictor")) %>%
+    mutate(random_effect = random_effect) %>%
+    arrange(p)
+
+  vif_table <- extract_lmm_vif(data, dv_cols, predictor_col, baseline_col, outcome_family)
+
+  results_path <- file.path(models_dir, paste0(file_stub, "_", predictor_col, "_results.csv"))
+  complete_path <- file.path(models_dir, paste0(file_stub, "_", predictor_col, "_complete_cases.csv"))
+  vif_path <- file.path(models_dir, paste0(file_stub, "_", predictor_col, "_vif.csv"))
+  tracking_path <- file.path(models_dir, paste0(file_stub, "_", predictor_col, "_participant_tracking.csv"))
+
+  readr::write_csv(results, results_path)
+  readr::write_csv(complete_cases, complete_path)
+  readr::write_csv(vif_table, vif_path)
+  readr::write_csv(tracking, tracking_path)
+
+  write_output_metadata(
+    results_path,
+    description = paste("Model-level results for", outcome_family, "using predictor", predictor_col, ". For LRT-based LMMs, eta2_partial is not reported because the primary omnibus test is a likelihood-ratio chi-square test rather than an F-test; use r2_marginal and r2_conditional as the reported effect-size summaries instead."),
+    columns = list(
+      DV = "Dependent variable.",
+      term = "Statistical test label.",
+      predictor = "Predictor used in the model.",
+      baseline = "Baseline covariate included in the model, if any.",
+      outcome_family = "Analysis family.",
+      analysis = "Analysis label.",
+      n = "Number of rows used in the fitted model.",
+      singular = "Whether the mixed model fit was singular.",
+      convergence = "Convergence message or fit error.",
+      p = "Uncorrected omnibus LRT p-value.",
+      interaction_term = "Specific fixed-effect interaction term corresponding to the predictor of interest.",
+      p_interaction_term = "P-value for the specific Group × predictor interaction term from the coefficient table."
+    )
+  )
+  write_output_metadata(
+    complete_path,
+    description = paste("Complete-case counts for", outcome_family, "using predictor", predictor_col),
+    columns = list(
+      DV = "Dependent variable.",
+      predictor = "Predictor used in the model.",
+      n_complete_rows = "Number of complete rows available.",
+      n_complete_ids = "Number of unique participants with complete data."
+    )
+  )
+  write_output_metadata(
+    vif_path,
+    description = paste("Variance inflation factors for proxy fixed-effect models in", outcome_family, "using predictor", predictor_col),
+    columns = list(
+      DV = "Dependent variable.",
+      term = "Model term.",
+      vif = "VIF or GVIF.",
+      gvif_adj = "Adjusted GVIF when applicable."
+    )
+  )
+  write_output_metadata(
+    tracking_path,
+    description = paste("Participant inclusion tracking for", outcome_family, "using predictor", predictor_col),
+    columns = list(
+      NECOS_ID = "Participant ID.",
+      included = "Whether the participant contributed to the final model.",
+      exclusion_reason = "Reason for exclusion if not included."
+    )
+  )
+
+  save_model_diagnostic_plots(full_models, outcome_family, paste0(file_stub, "_", predictor_col))
+
+  list(models = full_models, pairs = pairs, results = results, complete_cases = complete_cases, vif = vif_table, tracking = tracking)
+}
+
+if (run_random_intercept_sensitivity) {
+  rs_specs <- list(
+    list(data = ecc_hr_data, dv = ecc_dv_cols, pred = "HR_delta", fam = "eccentricity_lmm_random_intercept_sensitivity", stub = "eccentricity_lmm_random_intercept_sensitivity", lab = "ecc_lmm_random_intercept_sensitivity"),
+    list(data = ecc_hrv_data, dv = ecc_dv_cols, pred = "HRV_delta", fam = "eccentricity_lmm_random_intercept_sensitivity", stub = "eccentricity_lmm_random_intercept_sensitivity", lab = "ecc_lmm_random_intercept_sensitivity"),
+    list(data = ecc_saliva_data, dv = ecc_dv_cols, pred = "SaCort_delta", fam = "eccentricity_lmm_random_intercept_sensitivity", stub = "eccentricity_lmm_random_intercept_sensitivity", lab = "ecc_lmm_random_intercept_sensitivity"),
+    list(data = ecc_acth_data, dv = ecc_dv_cols, pred = "asinh_ACTH_delta", fam = "eccentricity_lmm_random_intercept_sensitivity", stub = "eccentricity_lmm_random_intercept_sensitivity", lab = "ecc_lmm_random_intercept_sensitivity"),
+    list(data = ecc_stai_data, dv = ecc_dv_cols, pred = "STAI_delta", fam = "eccentricity_lmm_random_intercept_sensitivity", stub = "eccentricity_lmm_random_intercept_sensitivity", lab = "ecc_lmm_random_intercept_sensitivity"),
+    list(data = ecc_vas_data, dv = ecc_dv_cols, pred = "VAS_delta", fam = "eccentricity_lmm_random_intercept_sensitivity", stub = "eccentricity_lmm_random_intercept_sensitivity", lab = "ecc_lmm_random_intercept_sensitivity"),
+    list(data = disp_hr_data, dv = disp_dv_cols, pred = "HR_delta", fam = "dispersion_lmm_random_intercept_sensitivity", stub = "dispersion_lmm_random_intercept_sensitivity", lab = "disp_lmm_random_intercept_sensitivity"),
+    list(data = disp_hrv_data, dv = disp_dv_cols, pred = "HRV_delta", fam = "dispersion_lmm_random_intercept_sensitivity", stub = "dispersion_lmm_random_intercept_sensitivity", lab = "disp_lmm_random_intercept_sensitivity"),
+    list(data = disp_saliva_data, dv = disp_dv_cols, pred = "SaCort_delta", fam = "dispersion_lmm_random_intercept_sensitivity", stub = "dispersion_lmm_random_intercept_sensitivity", lab = "disp_lmm_random_intercept_sensitivity"),
+    list(data = disp_acth_data, dv = disp_dv_cols, pred = "asinh_ACTH_delta", fam = "dispersion_lmm_random_intercept_sensitivity", stub = "dispersion_lmm_random_intercept_sensitivity", lab = "disp_lmm_random_intercept_sensitivity"),
+    list(data = disp_stai_data, dv = disp_dv_cols, pred = "STAI_delta", fam = "dispersion_lmm_random_intercept_sensitivity", stub = "dispersion_lmm_random_intercept_sensitivity", lab = "disp_lmm_random_intercept_sensitivity"),
+    list(data = disp_vas_data, dv = disp_dv_cols, pred = "VAS_delta", fam = "dispersion_lmm_random_intercept_sensitivity", stub = "dispersion_lmm_random_intercept_sensitivity", lab = "disp_lmm_random_intercept_sensitivity")
+  )
+
+  rs_results <- map(rs_specs, function(sp) {
+    run_lmm_screen(
+      sp$data,
+      sp$dv,
+      sp$pred,
+      outcome_family = sp$fam,
+      file_stub = sp$stub,
+      analysis_label = sp$lab,
+      random_effect = "(1 | NECOS_ID)",
+      fixed_effect_spec = "three_way"
+    )
+  })
+
+  lmm_random_intercept_sensitivity_results_all <- bind_rows(map(rs_results, "results"))
+  lmm_random_intercept_path <- file.path(models_dir, "peripheral_lmm_random_intercept_sensitivity_results.csv")
+  readr::write_csv(lmm_random_intercept_sensitivity_results_all, lmm_random_intercept_path)
+  write_output_metadata(
+    lmm_random_intercept_path,
+    description = "Three-way random-intercept LMM robustness checks using participant-level baseline-normalized peak-reactivity predictors only. Descriptive physiology plots elsewhere in the script show scan-level rest2/rest3 trajectories for illustration and are not the predictors entered into these models. These models are excluded from all multiple-comparison correction pools and are reported as supplementary, uncorrected sensitivity analyses. For these LRT-based mixed models, eta2_partial is not reported; use r2_marginal and r2_conditional as the effect-size summaries.",
+    columns = list(
+      DV = "Dependent variable.",
+      predictor = "Predictor used in the robustness model.",
+      p = "Uncorrected model-level likelihood-ratio-test p-value for the robustness model.",
+      p_interaction_term = "Uncorrected coefficient-table p-value for the highest-order Group × scan × predictor term in the robustness model, retained for interpretation only."
+    )
+  )
+} else {
+  message("Random-intercept sensitivity models skipped because run_random_intercept_sensitivity is FALSE.")
+}
+```
+
+# FINAL OUTPUT TABLES
+
+## Add parcel labels to eccentricity ANCOVA outputs
+
+```{r}
+parcel_label_path <- file.path(paths$data_root, "yeo_networks_17_reordered_400_complete_labels.csv")
+
+if (file.exists(parcel_label_path)) {
+  parcel_labels <- readr::read_csv(parcel_label_path, show_col_types = FALSE) %>%
+    mutate(DV = paste0("parcel_", row_number()))
+
+  ecc_lm_results_labeled <- ecc_lm_results_all %>%
+    left_join(parcel_labels, by = "DV")
+
+  readr::write_csv(
+    ecc_lm_results_labeled,
+    file.path(models_dir, "peripheral_eccentricity_delta_lm_results_labeled.csv")
+  )
+}
+```
+
+## Combine primary result tables
+
+```{r}
+all_results <- bind_rows(
+  ecc_lm_results_all,
+  disp_lm_results_all
+) %>%
+  mutate(
+    construct_family = case_when(
+      str_detect(outcome_family, "eccentricity") ~ "eccentricity",
+      str_detect(outcome_family, "dispersion") ~ "dispersion",
+      TRUE ~ "other"
+    ),
+    p_primary = p,
+    p_primary_source = "p_type3"
+  ) %>%
+  group_by(construct_family) %>%
+  mutate(
+    p_fdr_within_family = p.adjust(p_primary, method = "fdr"),
+    p_holm_within_family = p.adjust(p_primary, method = "holm")
+  ) %>%
+  ungroup() %>%
+  mutate(
+    p_fdr_global = p.adjust(p_primary, method = "fdr"),
+    p_holm_global = p.adjust(p_primary, method = "holm")
+  ) %>%
+  arrange(construct_family, outcome_family, predictor, DV)
+
+participant_tracking_all <- bind_rows(
+  ecc_lm_tracking_all,
+  disp_lm_tracking_all
+)
+
+delta_influence_all <- bind_rows(
+  ecc_lm_hr$influence,
+  ecc_lm_hrv$influence,
+  ecc_lm_saliva$influence,
+  ecc_lm_acth$influence,
+  ecc_lm_stai$influence,
+  ecc_lm_vas$influence,
+  disp_lm_hr$influence,
+  disp_lm_hrv$influence,
+  disp_lm_saliva$influence,
+  disp_lm_acth$influence,
+  disp_lm_stai$influence,
+  disp_lm_vas$influence
+)
+
+all_results_path <- file.path(models_dir, "peripheral_model_results.csv")
+counts_path <- file.path(models_dir, "peripheral_model_result_counts.csv")
+tracking_path <- file.path(models_dir, "peripheral_participant_tracking.csv")
+delta_influence_path <- file.path(models_dir, "peripheral_delta_influence.csv")
+pprimary_diag_path <- file.path(models_dir, "peripheral_p_primary_family_diagnostics.csv")
+manifest_path <- file.path(models_dir, "peripheral_output_table_descriptions.json")
+
+p_primary_family_diagnostics <- all_results %>%
+  group_by(construct_family, outcome_family) %>%
+  summarise(
+    n_rows = n(),
+    n_non_missing_p_primary = sum(!is.na(p_primary)),
+    n_missing_p_primary = sum(is.na(p_primary)),
+    p_primary_sources = paste(sort(unique(na.omit(p_primary_source))), collapse = ", "),
+    .groups = "drop"
+  )
+
+counts_tbl <- all_results %>%
+  group_by(construct_family, outcome_family, predictor) %>%
+  summarise(
+    n_tests_omnibus = sum(!is.na(p)),
+    n_tests_primary = sum(!is.na(p_primary)),
+    n_fdr_within_family_sig = sum(p_fdr_within_family < 0.05, na.rm = TRUE),
+    n_holm_within_family_sig = sum(p_holm_within_family < 0.05, na.rm = TRUE),
+    n_fdr_global_sig = sum(p_fdr_global < 0.05, na.rm = TRUE),
+    n_holm_global_sig = sum(p_holm_global < 0.05, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+## Write combined result tables and metadata
+
+```{r}
+write_metadata_manifest <- function(entries, out_path) {
+  jsonlite::write_json(entries, out_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
+}
+
+readr::write_csv(all_results, all_results_path)
+readr::write_csv(participant_tracking_all, tracking_path)
+readr::write_csv(delta_influence_all, delta_influence_path)
+readr::write_csv(p_primary_family_diagnostics, pprimary_diag_path)
+readr::write_csv(counts_tbl, counts_path)
+
+write_output_metadata(
+  all_results_path,
+  description = "Combined primary model results across eccentricity and dispersion baseline-adjusted delta ANCOVAs only. Multiple-comparison correction uses delta-ANCOVA model-level p-values and is applied within the eccentricity family and within the dispersion family, with an additional global BH correction across both families combined. The primary ANCOVA estimand is a baseline-conditional change parameterization: the delta outcome is modeled together with the baseline value of the same outcome to reduce regression-to-the-mean artefacts, and is therefore a baseline-adjusted association with change rather than an unadjusted raw-difference effect. Two-way LMMs are no longer part of this primary results table or its correction workflow. Three-way random-slope LMMs are reported separately as lower-power, uncorrected sensitivity analyses and are excluded from all correction pools. Delta-model influence summaries are reported separately in peripheral_delta_influence.csv.",
+  columns = list(
+    construct_family = "High-level construct family used for within-family correction (eccentricity or dispersion).",
+    outcome_family = "Specific primary analysis family (eccentricity_delta_lm or dispersion_delta_lm).",
+    DV = "Dependent variable.",
+    predictor = "Predictor used in the model.",
+    p = "Raw model-level p-value from the baseline-adjusted delta ANCOVA for the Group × delta-predictor effect.",
+    p_interaction_term = "Coefficient-table p-value for the Group × delta-predictor interaction term, retained for interpretation alongside interaction_estimate and interaction_term.",
+    p_primary = "Primary inferential p-value used for correction. For the primary ANCOVA table this equals the model-level p-value in column p.",
+    p_primary_source = "Indicates that p_primary came from the delta-ANCOVA model-level p-value (p_type3).",
+    p_fdr_within_family = "BH/FDR correction applied separately within the eccentricity family and within the dispersion family; this is the primary inferential correction column.",
+    p_holm_within_family = "Holm correction applied separately within eccentricity and within dispersion analyses; supplementary FWER sensitivity.",
+    p_fdr_global = "FDR correction across all primary ANCOVA tests in the full analysis set; global conservative correction column.",
+    p_holm_global = "Holm correction across all primary ANCOVA tests in the full analysis set; most conservative column."
+  )
+)
+
+write_output_metadata(
+  pprimary_diag_path,
+  description = "Quality-assurance table showing, by construct and outcome family, how many primary ANCOVA p_primary values were available versus missing before multiple-comparison correction.",
+  columns = list(
+    construct_family = "Top-level construct used for within-family correction (eccentricity or dispersion).",
+    outcome_family = "Specific primary analysis family label, such as eccentricity_delta_lm or dispersion_delta_lm.",
+    n_rows = "Total number of result rows in this family.",
+    n_non_missing_p_primary = "Number of rows contributing a non-missing p_primary value to the correction step.",
+    n_missing_p_primary = "Number of rows with missing p_primary values.",
+    p_primary_sources = "Which inferential quantity supplied p_primary in this family; in the primary table this is p_type3 from the baseline-adjusted delta ANCOVA."
+  )
+)
+
+write_output_metadata(
+  counts_path,
+  description = "Counts of primary ANCOVA tests and significant findings under each multiple-comparison correction scheme. Within-family correction is applied separately to the eccentricity family and the dispersion family; global BH/Holm are applied across both families combined. Two-way LMMs are excluded from these counts, and three-way random-slope LMM robustness checks are reported separately without correction.",
+  columns = list(
+    construct_family = "Construct family (eccentricity or dispersion).",
+    outcome_family = "Specific primary analysis family.",
+    predictor = "Predictor used in the model family.",
+    n_tests_omnibus = "Number of primary ANCOVA tests with a non-missing model-level p-value.",
+    n_tests_primary = "Number of tests contributing a non-missing p_primary value to the correction step.",
+    n_fdr_within_family_sig = "Number surviving within-family FDR.",
+    n_holm_within_family_sig = "Number surviving within-family Holm correction.",
+    n_fdr_global_sig = "Number surviving global FDR.",
+    n_holm_global_sig = "Number surviving global Holm correction."
+  )
+)
+
+write_output_metadata(
+  tracking_path,
+  description = "Participant-level inclusion tracking across primary delta ANCOVA analyses.",
+  columns = list(
+    NECOS_ID = "Participant ID.",
+    DV = "Dependent variable.",
+    predictor = "Predictor used in the model.",
+    analysis = "Analysis label.",
+    included = "Whether the participant contributed to the final model.",
+    exclusion_reason = "Reason for exclusion if not included."
+  )
+)
+
+write_output_metadata(
+  delta_influence_path,
+  description = "Combined influence diagnostics across all baseline-adjusted delta ANCOVA models. These summaries are descriptive only and were not used to define the pre-specified sensitivity exclusions.",
+  columns = list(
+    DV = "Dependent variable.",
+    predictor = "Predictor used in the model.",
+    outcome_family = "Analysis family label.",
+    analysis = "Analysis label.",
+    n = "Number of observations used in the fitted model.",
+    max_cooks_d = "Maximum Cook's distance across observations.",
+    mean_cooks_d = "Mean Cook's distance across observations.",
+    n_cooks_gt_4_over_n = "Count of observations with Cook's distance greater than 4/n.",
+    max_hat = "Maximum leverage (hat) value.",
+    max_abs_rstudent = "Maximum absolute studentized residual."
+  )
+)
+
+message("Two-way LMMs are excluded from the primary results summary and no LMM post-hoc emtrends were run in this version.")
+
+manifest_entries <- list(
+  peripheral_model_results = list(path = basename(all_results_path), purpose = "Primary baseline-adjusted delta ANCOVA results table with within-family and global correction."),
+  peripheral_model_result_counts = list(path = basename(counts_path), purpose = "Counts of primary ANCOVA tests and discoveries under each correction scheme."),
+  peripheral_participant_tracking = list(path = basename(tracking_path), purpose = "Participant inclusion/exclusion tracking across primary delta ANCOVA analyses."),
+  peripheral_delta_influence = list(path = basename(delta_influence_path), purpose = "Descriptive influence diagnostics across all baseline-adjusted delta ANCOVA models.")
+)
+if (exists("lmm_random_intercept_sensitivity_results_all") && nrow(lmm_random_intercept_sensitivity_results_all) > 0) {
+  manifest_entries$lmm_random_intercept_sensitivity_results <- list(path = basename(lmm_random_intercept_path), purpose = "Three-way random-intercept LMM robustness checks with participant-level stress-reactivity predictors reported without multiple-comparison correction.")
+}
+write_metadata_manifest(manifest_entries, manifest_path)
+```
+
+Descriptive, two-panel, dual-axis, and spaghetti plot sections are removed from the published peripheral workflow.
+
+
+## Session info
+
+```{r}
+sessionInfo()
+```

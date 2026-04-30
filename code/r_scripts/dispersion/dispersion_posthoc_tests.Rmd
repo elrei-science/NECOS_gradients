@@ -1,0 +1,247 @@
+---
+title: "Exploratory between network analysis"
+author: "Agata Patyczek and Elias Reinwarth "
+date: "2024-01-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading necessary libraries
+
+```{r, include=F}
+library(readr)
+library(purrr)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(car)
+library(tidyr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(lmerTest)
+library(lme4)
+library(dplyr)
+library(afex)
+library(ggridges)
+
+helper_candidates <- c(
+  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
+  file.path(getwd(), "..", "shared", "project_paths.R"),
+  file.path(getwd(), "shared", "project_paths.R")
+)
+helper_path <- helper_candidates[file.exists(helper_candidates)][1]
+if (is.na(helper_path)) {
+  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+}
+source(helper_path)
+
+paths <- pc_analysis_paths(file.path("dispersion", "between_networks"))
+tables_dir <- paths$tables_dir
+models_dir <- paths$models_dir
+figures_dir <- paths$figures_dir
+diagnostics_dir <- paths$diagnostics_dir
+```
+
+## Making folders for Data, plots, and models
+
+```{r}
+invisible(paths)
+
+pc_ensure_dirs(tables_dir, models_dir)
+
+```
+
+# Dataset preperation
+
+## Import and save dataset with three gradients and network labels
+
+```{r}
+# import the raw dataset
+raw_data <- read.csv(file.path(tables_dir, "dispersion_gradients_parcel_labels_iv.csv"))
+
+# save the dataset
+pc_write_csv(raw_data, file.path(tables_dir, "dispersion_posthoc_gradients_parcel_labels_iv.csv"))
+```
+
+
+## Calculate the centroid (mean of each network) along each gradient
+
+```{r}
+# Calculate centroid per participant per network per gradient
+centroids <- raw_data %>%
+  group_by(NECOS_ID, X7networks, scan, headmotion) %>%
+  summarise(centroid_V1 = mean(V1),
+            centroid_V2 = mean(V2),
+            centroid_V3 = mean(V3),
+            stress = first(stress)) %>%
+  ungroup()
+
+# Output the centroids dataset
+centroids
+
+```
+
+
+## Create a dataset with Euclidean distances between the network centroids
+
+```{r}
+# Group by NECOS_ID, scan, and stress, and calculate the Euclidean distance between each pair of networks per gradient
+euclidean_distances_per_gradient <- centroids %>%
+  group_by(NECOS_ID, scan, stress, headmotion) %>%
+  summarise(
+    distance_default_control_v1 = sqrt(sum((centroid_V1[X7networks == "Default"] - centroid_V1[X7networks == "Control"])^2)),
+    distance_default_salience_v1 = sqrt(sum((centroid_V1[X7networks == "Default"] - centroid_V1[X7networks == "Salience / Ventral Attn"])^2)),
+    distance_control_salience_v1 = sqrt(sum((centroid_V1[X7networks == "Control"] - centroid_V1[X7networks == "Salience / Ventral Attn"])^2)),
+    # Distance calculation for centroid_V2
+    distance_default_control_v2 = sqrt(sum((centroid_V2[X7networks == "Default"] - centroid_V2[X7networks == "Control"])^2)),
+    distance_default_salience_v2 = sqrt(sum((centroid_V2[X7networks == "Default"] - centroid_V2[X7networks == "Salience / Ventral Attn"])^2)),
+    distance_control_salience_v2 = sqrt(sum((centroid_V2[X7networks == "Control"] - centroid_V2[X7networks == "Salience / Ventral Attn"])^2)),
+    # Distance calculation for centroid_V3
+    distance_default_control_v3 = sqrt(sum((centroid_V3[X7networks == "Default"] - centroid_V3[X7networks == "Control"])^2)),
+    distance_default_salience_v3 = sqrt(sum((centroid_V3[X7networks == "Default"] - centroid_V3[X7networks == "Salience / Ventral Attn"])^2)),
+    distance_control_salience_v3 = sqrt(sum((centroid_V3[X7networks == "Control"] - centroid_V3[X7networks == "Salience / Ventral Attn"])^2))
+  ) %>%
+  ungroup()
+
+# Output the euclidean_distances_per_gradient dataset
+euclidean_distances_per_gradient
+
+
+# Splitting the dataset into three based on centroid type
+euclidean_distances_V1 <- euclidean_distances_per_gradient %>%
+  select(NECOS_ID, scan, stress, headmotion, starts_with("distance_default_control_v1"), starts_with("distance_default_salience_v1"), starts_with("distance_control_salience_v1"))
+
+euclidean_distances_V2 <- euclidean_distances_per_gradient %>%
+  select(NECOS_ID, scan, stress, headmotion, starts_with("distance_default_control_v2"), starts_with("distance_default_salience_v2"), starts_with("distance_control_salience_v2"))
+
+euclidean_distances_V3 <- euclidean_distances_per_gradient %>%
+  select(NECOS_ID, scan, stress, headmotion, starts_with("distance_default_control_v3"), starts_with("distance_default_salience_v3"), starts_with("distance_control_salience_v3"))
+
+# Output the datasets
+euclidean_distances_V1
+euclidean_distances_V2
+euclidean_distances_V3
+
+
+```
+
+
+# LMM models 
+
+```{r}
+library(afex)
+
+# Define the LMM formulas for each dependent variable
+formulas_V1 <- c(
+  "distance_default_control_v1 ~ scan * stress + headmotion + (1|NECOS_ID)",
+  "distance_default_salience_v1 ~ scan * stress + headmotion + (1|NECOS_ID)",
+  "distance_control_salience_v1 ~ scan * stress + headmotion + (1|NECOS_ID)"
+)
+
+formulas_V2 <- c(
+  "distance_default_control_v2 ~ scan * stress + headmotion + (1|NECOS_ID)",
+  "distance_default_salience_v2 ~ scan * stress + headmotion + (1|NECOS_ID)",
+  "distance_control_salience_v2 ~ scan * stress + headmotion + (1|NECOS_ID)"
+)
+
+formulas_V3 <- c(
+  "distance_default_control_v3 ~ scan * stress + headmotion + (1|NECOS_ID)",
+  "distance_default_salience_v3 ~ scan * stress + headmotion + (1|NECOS_ID)",
+  "distance_control_salience_v3 ~ scan * stress + headmotion + (1|NECOS_ID)"
+)
+
+# Fit the LMMs for each dataset
+lmm_results_V1 <- lapply(formulas_V1, function(formula) mixed(as.formula(formula), data = euclidean_distances_V1))
+lmm_results_V2 <- lapply(formulas_V2, function(formula) mixed(as.formula(formula), data = euclidean_distances_V2))
+lmm_results_V3 <- lapply(formulas_V3, function(formula) mixed(as.formula(formula), data = euclidean_distances_V3))
+
+
+# Output the LMM results for each dataset
+list(lmm_results_V1, lmm_results_V2, lmm_results_V3)
+
+```
+
+# Save the uncorrected outputs as text files
+```{r}
+library(afex)
+
+# Define the output directory
+output_dir <- models_dir
+
+# Create the directory if it doesn't exist
+if (!file.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+# Save the summaries for each dataset
+save_lmm_summary <- function(lmm_results, output_prefix) {
+  for (i in seq_along(lmm_results)) {
+    output_path <- file.path(output_dir, paste0(output_prefix, "_", i, ".txt"))
+    cat(capture.output(summary(lmm_results[[i]])), file = output_path, sep = "\n")
+  }
+}
+
+# Save summaries for each version
+save_lmm_summary(lmm_results_V1, "lmm_summary_uncorrected_g1")
+save_lmm_summary(lmm_results_V2, "lmm_summary_uncorrected_g2")
+save_lmm_summary(lmm_results_V3, "lmm_summary_uncorrected_g3")
+
+
+```
+
+# Extract p-values, correct with FDR and save as a csv
+```{r}
+extract_p_values <- function(lmm_results) {
+  if (!is.list(lmm_results)) {
+    stop("Input must be a list.")
+  }
+  
+  p_values_list <- lapply(lmm_results, function(model) {
+    if (inherits(model, "mixed")) {
+      # For mixed models from afex package
+      interaction_p_value <- model$anova_table["scan:stress", "Pr(>F)"]
+    } else if (inherits(model, "merMod")) {
+      # For lmer models from lme4 package
+      interaction_p_value <- summary(model)$coefficients["stress:scan", "Pr(>|t|)"]
+    } else if (inherits(model, "anova")) {
+      # For afex models
+      interaction_p_value <- model["scan:stress"]
+    } else {
+      warning("Unrecognized model type:", class(model))
+      interaction_p_value <- NA
+    }
+    return(interaction_p_value)
+  })
+  
+  return(p_values_list)
+}
+
+# Extract and adjust p-values for each version
+p_values_V1 <- extract_p_values(lmm_results_V1)
+p_values_V2 <- extract_p_values(lmm_results_V2)
+p_values_V3 <- extract_p_values(lmm_results_V3)
+
+# Combine model formulas and p-values for all versions
+all_model_formulas <- c(formulas_V1, formulas_V2, formulas_V3)
+all_p_values <- c(p_values_V1, p_values_V2, p_values_V3)
+
+# Create a dataframe to store the model formulas and p-values
+all_model_p_values <- data.frame(
+  Model = all_model_formulas,
+  P_Value = all_p_values
+)
+
+# Adjust p-values for false discovery rate (FDR) across all models
+all_model_p_values$P_Value_p_adjusted <- p.adjust(all_p_values, method = "fdr")
+
+
+# Save the results to a CSV file
+output_csv <- file.path(models_dir, "dispersion_posthoc_p_values.csv")
+write.csv(all_model_p_values, file = output_csv, row.names = FALSE)
+
+```

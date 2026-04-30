@@ -1,0 +1,14 @@
+{
+  "Description": "Participant-level parcel gradient positions for one resting-state run.",
+  "Sources": {
+    "rs2": "Original NECOS rs2 gradient exports reorganized into this published derivative dataset.",
+    "rs3": "Original NECOS rs3 gradient exports reorganized into this published derivative dataset.",
+    "rs1_rs4_rs5_rs6": "Original NECOS rs1, rs4, rs5, and rs6 gradient exports reorganized into this published derivative dataset."
+  },
+  "Columns": {
+    "parcel_index": "1-based parcel index in the 400-parcel solution.",
+    "gradient_1": "Parcel coordinate on gradient 1.",
+    "gradient_2": "Parcel coordinate on gradient 2.",
+    "gradient_3": "Parcel coordinate on gradient 3."
+  }
+}

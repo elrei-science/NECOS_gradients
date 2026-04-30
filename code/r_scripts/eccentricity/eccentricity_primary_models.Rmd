@@ -1,0 +1,488 @@
+# PREPARE LIBRARIES AND FOLDER STRUCTURE
+
+## Loading necessary libraries
+
+```{r, include=F}
+library(readr)
+library(dplyr)
+library(purrr)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(broom)
+library(car)
+library(tidyr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(Hmisc)
+library(EnvStats)
+library(purrr)
+library(lmerTest)
+library(lme4)
+library(lmtest)
+
+helper_candidates <- c(
+  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
+  file.path(getwd(), "..", "shared", "project_paths.R"),
+  file.path(getwd(), "shared", "project_paths.R")
+)
+helper_path <- helper_candidates[file.exists(helper_candidates)][1]
+if (is.na(helper_path)) {
+  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+}
+source(helper_path)
+
+paths <- pc_analysis_paths("eccentricity")
+tables_dir <- paths$tables_dir
+models_dir <- paths$models_dir
+figures_dir <- paths$figures_dir
+diagnostics_dir <- paths$diagnostics_dir
+
+```
+
+## Making folders for Data, plots, and models
+
+```{r}
+invisible(paths)
+
+pc_ensure_dirs(tables_dir, models_dir, diagnostics_dir)
+
+diag_hist_dir <- file.path(diagnostics_dir, "histograms")
+diag_qq_dir <- file.path(diagnostics_dir, "qq_plots")
+diag_resid_dir <- file.path(diagnostics_dir, "residual_plots")
+pc_ensure_dirs(diag_hist_dir, diag_qq_dir, diag_resid_dir)
+
+```
+
+# PREPARE DATASET
+
+## Import datasets
+
+```{r}
+# Function to read and process gradients data
+read_process_gradients <- function(session) {
+  pc_read_session_gradient_matrices(session = session, data_root = paths$data_root)
+}
+
+# Function to create an empty matrix with specified dimensions and column names
+create_empty_matrix <- function(ncol, nrow, cnames) {
+  matrix(ncol = ncol, nrow = nrow, dimnames = list(NULL, cnames))
+}
+
+# Read and process gradients data for rs_2 and rs_3
+rs_2_data <- read_process_gradients("rs2")
+rs_3_data <- read_process_gradients("rs3")
+
+# Create matrices for ec_parcel for rs_2 and rs_3
+ec_parcel_rs_2 <- create_empty_matrix(400, length(rs_2_data$data), paste0('parcel', 1:400))
+ec_parcel_rs_3 <- create_empty_matrix(400, length(rs_3_data$data), paste0('parcel', 1:400))
+
+```
+
+## DV dataset: Eccentricity
+
+Calculate eccentricity for both rs_2 and rs_3 and combine them to make a dataset "df_ec_combined"
+
+```{r}
+# Function to process eccentricity data
+process_eccentricity_data <- function(data, scan_label) {
+  cnames <- paste0('parcel_', 1:400)
+  ec_parcel <- matrix(NA, nrow = length(data$data), ncol = 400, dimnames = list(NULL, cnames))
+
+  for (p in 1:400) {
+    scores <- sapply(data$data, function(n) sqrt(n[p, 1]^2 + n[p, 2]^2 + n[p, 3]^2))
+    ec_parcel[, p] <- scores
+  }
+
+  names <- data$participants
+  ec_parcels <- data.frame('NECOS_ID' = names, ec_parcel)
+  ec_parcels$scan <- rep(scan_label, nrow(ec_parcels))
+
+  return(ec_parcels)
+}
+
+# Process eccentricity data for rs_2 and rs_3
+ec_parcels_rs_2 <- process_eccentricity_data(rs_2_data, "rest2")
+ec_parcels_rs_3 <- process_eccentricity_data(rs_3_data, "rest3")
+#write_csv(ec_parcels_rs_2, file.path(parent_dir, "Data", "Processed_Data", "ec_parcels_rs_2.csv"))
+#write_csv(ec_parcels_rs_3, file.path(parent_dir, "Data", "Processed_Data", "ec_parcels_rs_3.csv"))
+
+# Combine eccentricity scores for rs_2 and rs_3 and match with NECOS_ID
+df_ec_timepoints_combined <- rbind(ec_parcels_rs_2, ec_parcels_rs_3)
+
+pc_write_csv(df_ec_timepoints_combined, file.path(tables_dir, "eccentricity_timepoints_combined.csv"))
+
+```
+
+## IV dataframe with: ID, scan, group, headmotion
+
+```{r}
+
+IV <- pc_mean_fd(paths$data_root, scans = c("rest2", "rest3")) %>%
+  transmute(ID = NECOS_ID, scan, headmotion, stress = Group) %>%
+  arrange(scan)
+
+pc_write_csv(IV, file.path(tables_dir, "eccentricity_iv.csv"))
+```
+
+## Combine the dataset DV & IV into one dataset
+
+df_ec_timepoints_combined (eccentricity scores of both rs_2 and rs_3) + IV (including the stress, scan & headmotion)
+
+```{r}
+# Combine DV and IV datasets
+df_DV_IV_combined <- merge(df_ec_timepoints_combined, IV, by.x = c("NECOS_ID", "scan"), by.y = c("ID", "scan"))
+
+pc_write_csv(df_DV_IV_combined, file.path(tables_dir, "eccentricity_dv_iv_combined.csv"))
+
+build_parcel_gradient_table <- function(parcel_number, rs2_bundle, rs3_bundle, iv_df) {
+  rs2_df <- tibble(
+    ID = rs2_bundle$participants,
+    scan = "rest2",
+    gradient1 = sapply(rs2_bundle$data, function(gradient_matrix) gradient_matrix[parcel_number, 1]),
+    gradient2 = sapply(rs2_bundle$data, function(gradient_matrix) gradient_matrix[parcel_number, 2]),
+    gradient3 = sapply(rs2_bundle$data, function(gradient_matrix) gradient_matrix[parcel_number, 3])
+  )
+
+  rs3_df <- tibble(
+    ID = rs3_bundle$participants,
+    scan = "rest3",
+    gradient1 = sapply(rs3_bundle$data, function(gradient_matrix) gradient_matrix[parcel_number, 1]),
+    gradient2 = sapply(rs3_bundle$data, function(gradient_matrix) gradient_matrix[parcel_number, 2]),
+    gradient3 = sapply(rs3_bundle$data, function(gradient_matrix) gradient_matrix[parcel_number, 3])
+  )
+
+  bind_rows(rs2_df, rs3_df) %>%
+    left_join(iv_df, by = c("ID", "scan"))
+}
+
+parcel_100_table <- build_parcel_gradient_table(100, rs_2_data, rs_3_data, IV)
+parcel_377_table <- build_parcel_gradient_table(377, rs_2_data, rs_3_data, IV)
+
+pc_write_csv(parcel_100_table, file.path(tables_dir, "eccentricity_parcel_100.csv"))
+pc_write_csv(parcel_377_table, file.path(tables_dir, "eccentricity_parcel_377.csv"))
+
+```
+
+# ANALYSIS
+
+1.  Normality of dependent variable
+2.  Define model
+3.  Check assumptions of the model
+4.  Model comparison
+5.  Model summary
+6.  FDR correction
+7.  Plots & Figures
+
+## 1. Normality of dependent variable
+
+```{r}
+#install.packages("Hmisc")
+library(Hmisc)
+all_ec <- df_ec_timepoints_combined %>% select(starts_with("parcel_"))
+# create a PDF with histograms with all 400 parcels
+#pdf("historgram_h3_eccentricity.pdf")
+hist.data.frame(all_ec, nclass = 8)   # in R, just say hist(d)
+dev.set(dev.next())
+dev.off()
+
+# this code is to fix the issue of dev.off() being not found (run this before running the pdf file) (click this untill it works)
+#while (!is.null(dev.list()))  dev.off()
+```
+
+**a. histogram of the indedependent (headmotion) variable**
+
+```{r}
+# Create a PDF with histograms for all 400 parcels
+pdf(file.path(diag_hist_dir, "eccentricity_histogram_overview.pdf"), width = 12, height = 8)  # Adjust width and height as needed
+par(mar = c(4, 4, 2, 2))  # Adjust margins as needed
+
+hist.data.frame(df_ec_timepoints_combined, nclass = 8)
+dev.off()
+
+```
+
+**b. qq-plots**
+
+```{r}
+# create qqplots for every parcel to check for normality of the dependent variable 
+pdf(file.path(diag_qq_dir, "eccentricity_dependent_variable_qq_plots.pdf"))
+
+qqplots <- map2(all_ec, colnames(all_ec), function (.x,.y){
+  qqPlot(.x, main = .y)
+ 
+})
+
+dev.off()
+
+
+```
+
+## 2. Define model
+
+400 models (1 per parcel) parcel \~ stress \* scan + headmotion + (1 \| NECOS_ID)
+
+```{r}
+library(lmerTest)
+library(afex)
+library(purrr)
+
+# Find columns that start with "parcel_"
+dv_cols <- grep("^parcel_", colnames(df_DV_IV_combined))
+
+# The remaining columns are considered as IVs
+iv_cols <- setdiff(1:ncol(df_DV_IV_combined), dv_cols)
+
+# Preallocate lists for storing models
+all_models_lmm <- vector("list", length = length(dv_cols))
+all_models_n_lmm <- vector("list", length = length(dv_cols))
+
+# Loop to define models
+for (i in seq_along(dv_cols)) {
+  DV <- df_DV_IV_combined[, dv_cols[i]]
+  IV <- df_DV_IV_combined[, iv_cols]
+  
+  combined_data <- cbind(DV, IV)
+  colnames(combined_data)[1] <- "parcel"
+
+  # Define models
+  model <- mixed(parcel ~ stress * scan + headmotion + (1 | NECOS_ID), data = combined_data)
+  model_n <- lme4::lmer(parcel ~ stress * scan + headmotion + (1 | NECOS_ID), data = combined_data)
+  
+  # Store models in the preallocated lists
+  all_models_lmm[[i]] <- model
+  all_models_n_lmm[[i]] <- model_n
+}
+
+# Naming the models
+model_names <- colnames(df_DV_IV_combined[dv_cols])
+names(all_models_lmm) <- model_names
+names(all_models_n_lmm) <- model_names
+
+# Summarize models
+all_models_summary_lmm <- map(all_models_lmm, summary)
+all_models_summary_n_lmm <- map(all_models_n_lmm, summary)
+
+```
+
+
+## Check why the old code (11/22) did lead to different results
+
+```{r}
+
+parcel_1_comparison <- df_DV_IV_combined %>%
+  select(parcel_1, stress, scan, NECOS_ID, headmotion) %>%
+  drop_na()
+
+parcel_1_comparison_model <- lm(parcel_1 ~ stress * scan + headmotion,
+                                data = parcel_1_comparison)
+
+summary(parcel_1_comparison_model)
+
+```
+
+
+
+# 3. Check model assumptions
+
+**a. normality of residuals**
+
+```{r}
+
+# Extract residuals from the model summaries
+all_models_residuals <- map(all_models_summary_lmm, residuals)
+
+# Define the file path for the PDF
+pdf_file_path <- file.path(diag_qq_dir, "eccentricity_combined_residuals_qq_plots.pdf")
+pdf(pdf_file_path)
+
+# Generate and plot QQ plots for each set of residuals
+map2(all_models_residuals, names(all_models_summary_lmm), function(residuals, model_name) {
+  # Convert the residuals to a numeric vector, if necessary
+  residuals_numeric <- as.numeric(unlist(residuals))
+  
+  # Filter out non-finite values
+  residuals_numeric <- residuals_numeric[is.finite(residuals_numeric)]
+
+  # Check if there are valid residuals to plot
+  if (length(residuals_numeric) > 0) {
+    qq_plot <- ggqqplot(residuals_numeric, title = paste("Model", model_name))
+    print(qq_plot)  # Explicitly print the plot
+  }
+})
+
+# Close the PDF file
+dev.off()
+
+
+```
+
+**b. homoscadicity**
+
+```{r}
+# use the map function to plot all elements of the list
+
+pdf(file.path(diag_resid_dir, "eccentricity_homoscedasticity_plots.pdf"))
+map(all_models_n_lmm, function (i){
+  plot(fitted(i), as.vector(residuals(i)) ) 
+  abline(0, 0)
+})
+while (!is.null(dev.list()))  dev.off()
+```
+
+**c. independence (auto-correlation of the residuals)**
+
+```{r}
+
+library(car)
+
+
+durbin_watson <- map(all_models_residuals, function (i){
+  durbinWatsonTest(i)
+
+})
+durbin_watson <- as.data.frame(durbin_watson)
+durbin_watson <- t(durbin_watson)
+durbin_watson <- as.data.frame(durbin_watson)
+
+pc_write_csv(durbin_watson, file.path(diagnostics_dir, "eccentricity_durbin_watson.csv"))
+
+```
+
+**d. multi-collinearity: Variance Inflation Factor (VIF)**
+
+```{r}
+library(purrr)
+multicollinearity <- map(all_models_n_lmm, vif)
+
+pc_write_csv(as.data.frame(multicollinearity), file.path(diagnostics_dir, "eccentricity_multicollinearity.csv"))
+
+
+```
+
+# 4. Model comparison
+
+```{r}
+
+# Function to create a simple model
+create_simple_model <- function(df) {
+  lmer(parcel ~ stress + scan + headmotion + (1 | NECOS_ID), data = df, REML = FALSE)
+}
+
+# Find columns that start with "parcel_"
+dv_cols <- grep("^parcel_", colnames(df_DV_IV_combined))
+iv_cols <- setdiff(1:ncol(df_DV_IV_combined), dv_cols)
+
+# Preallocate list for storing simpler models
+all_models_simple_lmm <- vector("list", length = length(dv_cols))
+
+# Create simpler models for each DV
+for (i in seq_along(dv_cols)) {
+  DV <- df_DV_IV_combined[, dv_cols[i], drop = FALSE]
+  IV <- df_DV_IV_combined[, iv_cols]
+  
+  combined_data <- cbind(DV, IV)
+  colnames(combined_data)[1] <- "parcel"
+  
+  all_models_simple_lmm[[i]] <- create_simple_model(combined_data)
+}
+names(all_models_simple_lmm) <- colnames(df_DV_IV_combined[dv_cols])
+
+# Assuming all_models_n_lmm contains the corresponding complex models
+# Perform LRT model comparison
+lrtest_results <- map2(all_models_n_lmm, all_models_simple_lmm, lrtest)
+
+# Extract p-values
+p_values <- map(lrtest_results, function(i) i[2, "Pr(>Chisq)"])
+
+# Create a data frame for results
+lrt_df <- tibble(Model = names(all_models_simple_lmm), P_Value = p_values)
+
+# Write the results to a CSV file via the project-relative helpers when needed.
+
+
+```
+
+# Model summary, FDR-multimple comparisons and adding Schaefers 400 & Yeo's 7 parcellation 
+
+```{r}
+library(lme4)
+library(purrr)
+library(dplyr)
+library(stats)
+
+# Read parcel labels
+parcel_labels <- pc_parcel_labels(paths$data_root)
+
+# Add 'parcel' column with labels in the pattern 'parcel_1', 'parcel_2', ...
+parcel_labels$parcel <- paste0("parcel_", 1:nrow(parcel_labels))
+
+# Custom function to safely extract data from a mixed model summary
+extract_model_data <- function(model, model_name) {
+  model_summary <- summary(model)
+  
+  # Check if there are coefficients
+  if (!is.null(model_summary$coefficients)) {
+    df <- data.frame(
+      Model = rep(model_name, nrow(model_summary$coefficients)),
+      Term = rownames(model_summary$coefficients),
+      Estimate = model_summary$coefficients[, "Estimate"],
+      StdError = model_summary$coefficients[, "Std. Error"],
+      DF = model_summary$coefficients[, "df"],
+      tValue = model_summary$coefficients[, "t value"],
+      pValue = model_summary$coefficients[, "Pr(>|t|)"]
+    )
+  } else {
+    # Create an empty data frame with the same columns
+    df <- data.frame(
+      Model = model_name,
+      Term = NA,
+      Estimate = NA,
+      StdError = NA,
+      DF = NA,
+      tValue = NA,
+      pValue = NA
+    )
+  }
+  return(df)
+}
+
+# Extract data from all models
+model_names <- names(all_models_lmm)
+model_data_list <- map2(all_models_lmm, model_names, extract_model_data)
+
+# Combine all model data into one dataframe
+combined_model_data <- bind_rows(model_data_list)
+
+# Merge with parcel labels
+combined_model_data <- left_join(combined_model_data, parcel_labels, by = c("Model" = "parcel"))
+
+# Adjust p-values using FDR method
+combined_model_data$p.value.adj <- p.adjust(combined_model_data$pValue, method = "fdr")
+
+# Add a significance column
+combined_model_data$Significance <- ifelse(combined_model_data$p.value.adj < 0.05, "*", "")
+
+# Save to CSV
+pc_write_csv(combined_model_data, file.path(models_dir, "eccentricity_all_models_with_labels.csv"))
+
+# Filter rows with the interaction term "stress:scan1"
+interaction_data <- combined_model_data %>%
+  filter(Term == "stress:scan1")
+
+
+
+```
+
+```{r}
+output_new <- read_csv(file.path(models_dir, "eccentricity_all_models_with_labels.csv"))
+
+# Filter rows with the interaction term "stress:scan1"
+interaction_data_new <- output_new %>%
+  filter(Term == "stress:scan1")
+pc_write_csv(interaction_data_new, file.path(models_dir, "eccentricity_all_models_interaction_only.csv"))
+
+
+```
+

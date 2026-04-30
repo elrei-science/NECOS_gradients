@@ -1,0 +1,425 @@
+---
+title: "within_network_NECOS"
+author: "Elias"
+date: "2024-01-24"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading necessary libraries
+
+```{r, include=F}
+library(readr)
+library(purrr)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(car)
+library(tidyr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(lmerTest)
+library(lme4)
+library(dplyr)
+library(afex)
+
+helper_candidates <- c(
+  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
+  file.path(getwd(), "..", "shared", "project_paths.R"),
+  file.path(getwd(), "shared", "project_paths.R")
+)
+helper_path <- helper_candidates[file.exists(helper_candidates)][1]
+if (is.na(helper_path)) {
+  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+}
+source(helper_path)
+
+paths <- pc_analysis_paths(file.path("dispersion", "within_networks"))
+tables_dir <- paths$tables_dir
+models_dir <- paths$models_dir
+figures_dir <- paths$figures_dir
+diagnostics_dir <- paths$diagnostics_dir
+```
+
+## Making folders for Data, plots, and models
+
+```{r}
+invisible(paths)
+
+pc_ensure_dirs(tables_dir, models_dir, figures_dir, diagnostics_dir)
+
+diag_hist_dir <- file.path(diagnostics_dir, "histograms")
+diag_qq_dir <- file.path(diagnostics_dir, "qq_plots")
+diag_resid_dir <- file.path(diagnostics_dir, "residual_plots")
+pc_ensure_dirs(diag_hist_dir, diag_qq_dir, diag_resid_dir)
+
+```
+
+## Compute Dispersion
+
+
+## import dataset with all gradients
+
+```{r}
+combined_gradients <- pc_read_gradients(c("rs2", "rs3"), data_root = paths$data_root) %>%
+  select(NECOS_ID, scan, parcel, V1, V2, V3)
+
+# Load and process IV dataframe
+IV <- pc_mean_fd(paths$data_root, scans = c("rest2", "rest3")) %>%
+  select(NECOS_ID, scan, headmotion, stress = Group)
+
+parcel_labels <- pc_parcel_labels(paths$data_root) %>%
+  select(X7networks_order,X7networks)%>%
+  rename(parcel = X7networks_order)
+
+
+# Merging the gradients data with IV
+final_data <- merge(IV, combined_gradients, by = c("NECOS_ID", "scan"))
+final_data <- merge(parcel_labels[c("parcel", "X7networks")], final_data, by = c("parcel"))
+
+pc_write_csv(final_data, file.path(tables_dir, "dispersion_within_gradients_parcel_labels_iv.csv"))
+
+```
+
+## create the centroid dataset
+
+calculate the centroid of the network as the mean of all parcels in the 3D space
+```{r}
+# Next we calculate the centroid for each network based on its corresponding parcels
+
+library(dplyr)
+
+mean_centroids <- final_data %>%
+  group_by(NECOS_ID, X7networks, scan) %>%
+  summarise(
+    mean_V1 = mean(V1, na.rm = TRUE),
+    mean_V2 = mean(V2, na.rm = TRUE),
+    mean_V3 = mean(V3, na.rm = TRUE),
+    .groups = "drop"
+  )
+pc_write_csv(mean_centroids, file.path(tables_dir, "dispersion_within_mean_centroids.csv"))
+
+
+```
+
+## Compute the within network dispersion
+```{r}
+
+# Function to calculate Euclidean distance in 3D for each parcel
+calculate_distance_for_parcel <- function(x1, y1, z1, x2, y2, z2) {
+  sqrt((x2 - x1)^2 + (y2 - y1)^2 + (z2 - z1)^2)
+}
+
+# Calculate distances for each parcel using mean centroids
+final_data_with_distance <- final_data %>%
+  left_join(mean_centroids, by = c("NECOS_ID", "X7networks", "scan")) %>%
+  mutate(distance_to_mean_centroid = calculate_distance_for_parcel(V1, V2, V3, mean_V1, mean_V2, mean_V3))
+
+# Average distances for each NECOS_ID, network, and scan using mean centroids
+within_dispersion <- final_data_with_distance %>%
+  group_by(NECOS_ID, X7networks, scan) %>%
+  mutate(X7networks = ifelse(X7networks %in% c("Salience / Ventral Attn"), "Salience", X7networks))%>%
+  summarise(within_dispersion = mean(distance_to_mean_centroid, na.rm = TRUE), .groups = 'drop')
+
+
+# Load and process IV dataframe
+IV <- pc_mean_fd(paths$data_root, scans = c("rest2", "rest3")) %>%
+  select(NECOS_ID, scan, headmotion, stress = Group)
+
+
+# Merging the gradients data with IV
+within_dispersion <- merge(IV, within_dispersion, by = c("NECOS_ID", "scan"))
+
+# Save the results for mean centroids
+pc_write_csv(within_dispersion, file.path(tables_dir, "dispersion_mean_within_networks.csv"))
+
+```
+
+### 1. Normality assumption of the dependent variable
+
+**a. histogram**
+
+```{r}
+# Function to create and save histogram for mean distances by network
+create_save_histogram_mean_by_network <- function(data, distance_column, title_prefix, file_prefix, scan, network) {
+  # Check if the distance_column is present in the data
+  if (!distance_column %in% colnames(data)) {
+    stop(paste("Error: Column", distance_column, "not found in the data."))
+  }
+
+  # Create histogram plot
+  p <- ggplot(data, aes_string(x = distance_column)) +
+    geom_histogram(bins = 30, fill = "blue", color = "black") +
+    ggtitle(paste(title_prefix, " - ", distance_column, " - Scan: ", scan, " - Network: ", network)) +
+    xlab("Distance") +
+    ylab("Frequency")
+
+  # Construct file path
+  file_path <- file.path(diag_hist_dir, paste0("dispersion_within_histogram_", scan, "_", network, ".svg"))
+
+  # Save the plot
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+# Distance type to plot
+distance_type <- "within_dispersion"
+
+# Assuming the networks are named as 'Default', 'Control', and 'Salience'
+networks <- c("Default", "Control", "Salience")
+
+
+# Create and save histograms for mean distances for each scan and network
+for (scan in unique(within_dispersion$scan)) {
+  for (network in networks) {
+    subset_data <- within_dispersion[within_dispersion$scan == scan & within_dispersion$X7networks == network, ]
+    create_save_histogram_mean_by_network(subset_data, distance_type, "Mean Distances", "mean_distances", scan, network)
+  }
+}
+
+
+```
+
+**b. qq-plots**
+
+```{r}
+# Function to create and save QQ plot for mean distances by network
+create_save_qqplot_mean_by_network <- function(data, distance_column, title_prefix, file_prefix, scan, network) {
+  # Check if the distance_column is present in the data
+  if (!distance_column %in% colnames(data)) {
+    stop(paste("Error: Column", distance_column, "not found in the data."))
+  }
+
+  # Create QQ plot
+  p <- ggplot(data, aes(sample = !!sym(distance_column))) +
+    stat_qq() +
+    stat_qq_line() +
+    ggtitle(paste(title_prefix, " - ", distance_column, " - Scan: ", scan, " - Network: ", network)) +
+    xlab("Theoretical Quantiles") +
+    ylab("Sample Quantiles")
+
+  # Construct file path
+  file_path <- file.path(diag_qq_dir, paste0("dispersion_within_qq_", scan, "_", network, ".svg"))
+
+  # Save the plot as SVG
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+# Distance type to plot
+distance_type <- "within_dispersion"
+
+# Create and save QQ plots for mean distances for each scan and network
+for (scan in unique(within_dispersion$scan)) {
+  for (network in networks) {
+    subset_data <- within_dispersion[within_dispersion$scan == scan & within_dispersion$X7networks == network, ]
+    create_save_qqplot_mean_by_network(subset_data, distance_type, "Mean Distances QQ Plot", "mean_distances_qq", scan, network)
+  }
+}
+
+```
+
+### 2. Define model
+
+Define 3 models of the same type with different dependent variables (between distance of centroids)
+## between network dispersion
+```{r}
+
+# Function to run the model using afex::mixed
+run_model <- function(network) {
+  
+   # Splitting the dataframe by '7networks'
+  split_data <- split(within_dispersion, within_dispersion$`X7networks`)
+  
+  # Construct the formula
+  model_formula <- as.formula("within_dispersion ~ stress * scan + headmotion + (1 | NECOS_ID)")
+
+  # Extract the dataframe associated with the specified network
+  df <- split_data[[network]]
+
+  # Fit the mixed model using afex::mixed
+  afex_model <- mixed(model_formula, data = df)
+  
+  return(afex_model)
+}
+
+
+# Function to run the model using lme4::lmer
+lmer_run_model <- function(network) {
+ # Splitting the dataframe by '7networks'
+  split_data <- split(within_dispersion, within_dispersion$`X7networks`)
+  
+  # Construct the formula
+  model_formula <- as.formula("within_dispersion ~ stress * scan + headmotion + (1 | NECOS_ID)")
+
+  # Extract the dataframe associated with the specified network
+  df <- split_data[[network]]
+  
+  # Fit the mixed model using afex::mixed
+  lmer_model <- lme4::lmer(model_formula, data = df)
+  
+
+  return(lmer_model)
+}
+
+
+# Run afex models for each distance measure
+afex_model_control <- run_model("Control")
+afex_model_default <- run_model("Default")
+afex_model_salience <- run_model("Salience")
+
+# run lmer models for each distance measure to compute plots easier later on
+lmer_model_control <- lmer_run_model("Control")
+lmer_model_default <- lmer_run_model("Default")
+lmer_model_salience <- lmer_run_model("Salience")
+
+# extract p-values of afex models
+default_control <- afex_model_control$anova_table$`Pr(>F)`
+control_p <- default_control[4]
+
+default_salience <- afex_model_default$anova_table$`Pr(>F)`
+default_p <- default_salience[4]
+
+control_salience <- afex_model_salience$anova_table$`Pr(>F)`
+salience_p <- control_salience[4]
+
+# Extract p-values
+p_values_interaction <- c(
+  control_p,
+  default_p,
+  salience_p
+)
+
+# Apply Bonferroni correction across all three p-values
+adjusted_p_values <- p.adjust(p_values_interaction, method = "bonferroni")
+
+# Create a data frame with results
+p_value_df <- data.frame(
+  Distance_Type = c("Control", "Default", "Salience"),
+  P_Value = p_values_interaction,
+  Adjusted_P_Value = adjusted_p_values
+)
+#save df
+pc_write_csv(p_value_df, file.path(models_dir, "dispersion_within_network_pvalues.csv"))
+
+
+# Function to extract relevant summary data from lmer models
+extract_lmer_summary <- function(model) {
+  summary_model <- summary(model)
+  fixed_effects <- summary_model$coefficients
+  random_effects_var <- as.data.frame(VarCorr(model))
+  
+  return(list(fixed_effects = fixed_effects, random_effects_var = random_effects_var))
+}
+
+# Extract summary data from each lmer model
+summary_control <- extract_lmer_summary(lmer_model_control)
+summary_default <- extract_lmer_summary(lmer_model_default)
+summary_salience <- extract_lmer_summary(lmer_model_salience)
+
+# Extract fixed effects data into separate data frames
+fe_control_df <- as.data.frame(summary_control$fixed_effects)
+fe_control_df$Model <- "Control"
+
+fe_default_df <- as.data.frame(summary_default$fixed_effects)
+fe_default_df$Model <- "Default"
+
+fe_salience_df <- as.data.frame(summary_salience$fixed_effects)
+fe_salience_df$Model <- "Salience"
+
+# Combine the fixed effects data frames
+combined_fe_df <- rbind(fe_control_df, fe_default_df, fe_salience_df)
+
+# Add P_Value and Adjusted_P_Value columns
+combined_fe_df$P_Value_Scan_Stress <- rep(p_values_interaction, each = nrow(combined_fe_df) / 3)
+combined_fe_df$Adjusted_P_Value_Scan_Stress <- rep(adjusted_p_values, each = nrow(combined_fe_df) / 3)
+
+# Save the combined data frame
+pc_write_csv(combined_fe_df, file.path(models_dir, "dispersion_within_network_model_results.csv"))
+
+```
+
+### 3. Check model assumptions
+
+**a. normality of residuals**
+
+```{r}
+all_lmer_models <- list(
+  Control = lmer_model_control,
+  Default = lmer_model_default,
+  Salience = lmer_model_salience
+)
+
+create_save_qqplot_residuals <- function(lmer_model, network, file_prefix) {
+  res_df <- data.frame(residuals = residuals(lmer_model))
+
+  p <- ggplot(res_df, aes(sample = residuals)) +
+    stat_qq() +
+    stat_qq_line() +
+    ggtitle(paste("Residuals QQ Plot - Network:", network)) +
+    xlab("Theoretical Quantiles") +
+    ylab("Sample Quantiles")
+
+  file_path <- file.path(diag_qq_dir, paste0(file_prefix, "_", network, ".svg"))
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+purrr::walk(names(all_lmer_models), function(network) {
+  create_save_qqplot_residuals(all_lmer_models[[network]], network, "dispersion_within_residuals_qq")
+})
+```
+
+**b. homoscedasticity**
+
+```{r}
+create_save_homoscedasticity_plot <- function(lmer_model, network, file_prefix) {
+  df <- data.frame(
+    Fitted = predict(lmer_model),
+    Residuals = resid(lmer_model)
+  )
+
+  p <- ggplot(df, aes(x = Fitted, y = Residuals)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    ggtitle(paste("Homoscedasticity Plot - Network:", network)) +
+    xlab("Fitted Values") +
+    ylab("Residuals")
+
+  file_path <- file.path(diag_resid_dir, paste0(file_prefix, "_", network, ".svg"))
+  ggsave(filename = file_path, plot = p, width = 10, height = 8, device = "svg")
+}
+
+purrr::walk(names(all_lmer_models), function(network) {
+  create_save_homoscedasticity_plot(all_lmer_models[[network]], network, "dispersion_within_homoscedasticity")
+})
+```
+
+**c. independence (auto-correlation of the residuals)**
+
+```{r}
+durbin_watson_df <- data.frame(
+  Model = names(all_lmer_models),
+  Durbin_Watson_Statistic = purrr::map_dbl(all_lmer_models, ~ as.numeric(car::durbinWatsonTest(residuals(.x))))
+)
+
+pc_write_csv(durbin_watson_df, file.path(diagnostics_dir, "dispersion_within_network_durbin_watson.csv"))
+```
+
+**d. multi-collinearity: Variance Inflation Factor (VIF)**
+
+```{r}
+multicollinearity <- purrr::map(all_lmer_models, vif)
+terms <- names(multicollinearity[[1]])
+vif_df <- data.frame(Term = terms)
+
+for (model_name in names(multicollinearity)) {
+  vif_df[[model_name]] <- multicollinearity[[model_name]]
+}
+
+pc_write_csv(vif_df, file.path(diagnostics_dir, "dispersion_within_network_vif.csv"))
+```
