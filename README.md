@@ -1,6 +1,6 @@
-# NECOS published code
+# NECOS gradients: Central and peripheral dynamics of acute stress: evidence from functional cortical gradients
 
-This repository contains the Python and R workflows used to regenerate the published NECOS gradient analyses and manuscript figures from the files shipped in `data/`.
+This repository contains the Python and R workflows used to regenerate the NECOS gradient analyses and manuscript figures from the files shipped in `data/`.
 
 ## Licensing and data reuse
 
