@@ -7,7 +7,8 @@ suppressPackageStartupMessages({
 })
 
 # Walk upward from a starting directory until a folder containing the expected
-# published project structure (`code/`, `data/`, `results/`) is found.
+# published project structure (`code/` and `data/`) is found. `results/` is created
+# by the scripts and does not exist in a fresh clone.
 # This lets the same scripts work when called from the project root, from an
 # analysis subfolder, or from an R Markdown render context.
 pc_locate_root <- function(start = getwd()) {
@@ -16,9 +17,8 @@ pc_locate_root <- function(start = getwd()) {
   repeat {
     has_code <- dir.exists(file.path(current, "code"))
     has_data <- dir.exists(file.path(current, "data"))
-    has_results <- dir.exists(file.path(current, "results"))
 
-    if (has_code && has_data && has_results) {
+    if (has_code && has_data) {
       return(current)
     }
 

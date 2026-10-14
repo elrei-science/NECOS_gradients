@@ -13,13 +13,13 @@ suppressPackageStartupMessages({
 })
 
 helper_candidates <- c(
-  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
-  file.path(getwd(), "..", "shared", "project_paths.R"),
-  file.path(getwd(), "shared", "project_paths.R")
+  file.path(getwd(), "code", "r_scripts", "shared", "project_io.R"),
+  file.path(getwd(), "..", "shared", "project_io.R"),
+  file.path(getwd(), "shared", "project_io.R")
 )
 helper_path <- helper_candidates[file.exists(helper_candidates)][1]
 if (is.na(helper_path)) {
-  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+  stop("Could not locate `code/r_scripts/shared/project_io.R`.")
 }
 source(helper_path)
 

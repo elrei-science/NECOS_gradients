@@ -5,10 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "necos-rs-gradient-analysis"
 version = "0.1.0"
-description = "Python script for NECOS resting-state gradient analysis."
-readme = "README.md"
+description = "NECOS resting-state gradient and post-hoc connectivity workflows."
 requires-python = ">=3.10"
-license = { text = "Proprietary research code for publication release" }
+license = { text = "GPL-3.0" }
 authors = [
 	{ name = "Agata Patyczek" },
 	{ name = "Elias Reinwarth" },
@@ -17,8 +16,11 @@ authors = [
 dependencies = [
 	"numpy>=1.24",
 	"pandas>=2.0",
+	"scipy>=1.10",
+	"nibabel>=5.0",
 	"nilearn>=0.10",
-	"brainspace>=0.1.10"
+	"brainspace>=0.1.10",
+	"matplotlib>=3.7"
 ]
 
 [project.optional-dependencies]

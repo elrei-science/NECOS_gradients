@@ -35,11 +35,11 @@ library(grid)
 
 # The script needs access to shared path/helper functions.
 # Because the script may be run from slightly different working directories,
-# we define several possible locations where `project_paths.R` might be found.
+# we define several possible locations where `project_io.R` might be found.
 helper_candidates <- c(
-  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
-  file.path(getwd(), "..", "shared", "project_paths.R"),
-  file.path(getwd(), "shared", "project_paths.R")
+  file.path(getwd(), "code", "r_scripts", "shared", "project_io.R"),
+  file.path(getwd(), "..", "shared", "project_io.R"),
+  file.path(getwd(), "shared", "project_io.R")
 )
 
 # Select the first existing helper file from the possible paths above.
@@ -48,7 +48,7 @@ helper_path <- helper_candidates[file.exists(helper_candidates)][1]
 # Stop the script early if the helper file cannot be found.
 # This prevents later errors caused by missing path functions.
 if (is.na(helper_path)) {
-  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+  stop("Could not locate `code/r_scripts/shared/project_io.R`.")
 }
 
 # Load the shared project path functions, such as:
@@ -931,8 +931,8 @@ build_physio_brain_dataframe <- function(
     mutate(Group = factor(pretty_group(Group), levels = c("Control", "Stress")))
   
   outcome_map <- c(
-    delta_parcel_100 = "vPFC eccentricity",
-    delta_parcel_377 = "Insula eccentricity",
+    delta_parcel_100 = "Insula eccentricity",
+    delta_parcel_377 = "vPFC eccentricity",
     delta_distance_control_salience = "SN-FPN dispersion",
     delta_distance_default_salience = "SN-DMN dispersion"
   )
@@ -1211,6 +1211,29 @@ save_physio_single_best_plots <- function(output_dir = physio_plot_dir, plot_mod
   )
   
   purrr::compact(plot_list)
+}
+
+
+# Single panel for a chosen outcome and peripheral marker (same layout as the best-outcome panels)
+save_physio_selected_pair_plot <- function(outcome_col, predictor_col, output_dir = physio_plot_dir, plot_mode = "raw_delta") {
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  data_bundle <- build_physio_brain_dataframe()
+  pair <- data_bundle$results_tbl %>% filter(DV == outcome_col, predictor == predictor_col)
+  df_sub <- build_physio_panel_data(data_bundle, outcome_col, predictor_col, plot_mode = plot_mode)
+  
+  label_text <- paste0(
+    "n = ", pair$n, "\n",
+    "p = ", fmt_p(pair$p), "\n",
+    "p corrected = ", fmt_p(pair$p_fdr_within_family)
+  )
+  plot_object <- make_physio_single_best_plot(
+    df_sub, label_text,
+    predictor_title = unname(data_bundle$predictor_map[predictor_col]),
+    outcome_title = unname(data_bundle$outcome_map[outcome_col]),
+    plot_mode = plot_mode
+  )
+  save_plot_all_formats(plot_object, paste0("selected_pair_", predictor_col, "_", outcome_col, "_", plot_mode), output_dir, width = 8, height = 8)
+  plot_object
 }
 
 
@@ -1582,6 +1605,7 @@ save_publication_figures <- function() {
     peripheral_measures = list(
       physio_best_outcome_grid = save_physio_best_outcome_grid(),
       physio_single_best_plots = save_physio_single_best_plots(),
+      physio_sn_dmn_cortisol_plot = save_physio_selected_pair_plot("delta_distance_default_salience", "SaCort_delta"),
       physio_stress_only_plots = save_physio_stress_only_spearman_plots(),
       physio_epoch_timeline_plot = save_physio_epoch_timeline_plot()
     )

@@ -27,13 +27,13 @@ options(contrasts = c("contr.sum", "contr.poly"))
 knitr::opts_chunk$set(message = FALSE, warning = TRUE)
 
 helper_candidates <- c(
-  file.path(getwd(), "code", "r_scripts", "shared", "project_paths.R"),
-  file.path(getwd(), "..", "shared", "project_paths.R"),
-  file.path(getwd(), "shared", "project_paths.R")
+  file.path(getwd(), "code", "r_scripts", "shared", "project_io.R"),
+  file.path(getwd(), "..", "shared", "project_io.R"),
+  file.path(getwd(), "shared", "project_io.R")
 )
 helper_path <- helper_candidates[file.exists(helper_candidates)][1]
 if (is.na(helper_path)) {
-  stop("Could not locate `code/r_scripts/shared/project_paths.R`.")
+  stop("Could not locate `code/r_scripts/shared/project_io.R`.")
 }
 source(helper_path)
 
@@ -186,11 +186,7 @@ pc_write_csv(dispersion_base, file.path(tables_dir, "peripheral_dispersion_base.
 
 ## Prepare physiological predictors
 
-The published repository uses the precomputed derivative predictor tables loaded
-from `data/` at the top of the script. Earlier internal code that rebuilt these
-predictor tables and their endpoint/QC plots from intermediate wide-format input
-objects has been removed from the public version because it was not part of the
-released workflow.
+The precomputed derivative predictor tables are loaded from `data/` at the top of the script.
 
 # ANALYSIS
 
@@ -1572,8 +1568,6 @@ if (exists("lmm_random_intercept_sensitivity_results_all") && nrow(lmm_random_in
 }
 write_metadata_manifest(manifest_entries, manifest_path)
 ```
-
-Descriptive, two-panel, dual-axis, and spaghetti plot sections are removed from the published peripheral workflow.
 
 
 ## Session info
